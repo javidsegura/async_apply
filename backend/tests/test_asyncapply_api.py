@@ -18,7 +18,8 @@ def stub_process_batch(monkeypatch: pytest.MonkeyPatch):
     return calls
 
 
-def test_create_batch_returns_queued_items(client: TestClient) -> None:
+def test_create_batch_returns_queued_items(client: TestClient, make_user) -> None:
+    make_user()
     response = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job", "pasted JD text"]})
 
     assert response.status_code == 201
@@ -28,17 +29,31 @@ def test_create_batch_returns_queued_items(client: TestClient) -> None:
     assert {item["state"] for item in body["items"]} == {"queued"}
 
 
-def test_create_batch_rejects_empty_items(client: TestClient) -> None:
+def test_create_batch_requires_auth(client: TestClient) -> None:
+    response = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]})
+    assert response.status_code == 401
+
+
+def test_create_batch_is_blocked_once_budget_is_exhausted(client: TestClient, make_user) -> None:
+    make_user(token_budget_usd=1.0, spent_usd=1.0)
+    response = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]})
+    assert response.status_code == 402
+
+
+def test_create_batch_rejects_empty_items(client: TestClient, make_user) -> None:
+    make_user()
     response = client.post("/api/v1/asyncapply/batches", json={"items": []})
     assert response.status_code == 422
 
 
-def test_get_batch_returns_404_for_unknown_id(client: TestClient) -> None:
+def test_get_batch_returns_404_for_unknown_id(client: TestClient, make_user) -> None:
+    make_user()
     response = client.get("/api/v1/asyncapply/batches/999")
     assert response.status_code == 404
 
 
-def test_get_batch_round_trips_created_batch(client: TestClient) -> None:
+def test_get_batch_round_trips_created_batch(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
 
     response = client.get(f"/api/v1/asyncapply/batches/{created['id']}")
@@ -47,7 +62,28 @@ def test_get_batch_round_trips_created_batch(client: TestClient) -> None:
     assert response.json()["id"] == created["id"]
 
 
-def test_list_batches_includes_created_batch(client: TestClient) -> None:
+def test_a_batch_is_invisible_to_a_different_user(client: TestClient, make_user) -> None:
+    make_user()
+    created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
+
+    make_user()  # switch identity
+    response = client.get(f"/api/v1/asyncapply/batches/{created['id']}")
+
+    assert response.status_code == 404
+
+
+def test_an_admin_can_read_anyone_s_batch(client: TestClient, make_user) -> None:
+    make_user()
+    created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
+
+    make_user(role="admin")
+    response = client.get(f"/api/v1/asyncapply/batches/{created['id']}")
+
+    assert response.status_code == 200
+
+
+def test_list_batches_includes_created_batch(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
 
     response = client.get("/api/v1/asyncapply/batches")
@@ -56,7 +92,16 @@ def test_list_batches_includes_created_batch(client: TestClient) -> None:
     assert any(batch["id"] == created["id"] for batch in response.json())
 
 
-def test_retry_batch_requeues_failed_items_only(client: TestClient) -> None:
+def test_list_batches_excludes_another_user_s_batches(client: TestClient, make_user) -> None:
+    make_user()
+    client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]})
+
+    make_user()
+    assert client.get("/api/v1/asyncapply/batches").json() == []
+
+
+def test_retry_batch_requeues_failed_items_only(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
 
     response = client.post(f"/api/v1/asyncapply/batches/{created['id']}/retry")
@@ -65,7 +110,8 @@ def test_retry_batch_requeues_failed_items_only(client: TestClient) -> None:
     assert response.json()["state"] == "queued"
 
 
-def test_download_cv_returns_the_pdf(client: TestClient, tmp_path) -> None:
+def test_download_cv_returns_the_pdf(client: TestClient, make_user, tmp_path) -> None:
+    make_user()
     pdf = tmp_path / "1-acme-cv.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake")
 
@@ -87,14 +133,16 @@ def test_download_cv_returns_the_pdf(client: TestClient, tmp_path) -> None:
     assert response.headers["content-type"] == "application/pdf"
 
 
-def test_download_unknown_asset_is_404(client: TestClient) -> None:
+def test_download_unknown_asset_is_404(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
     item_id = created["items"][0]["id"]
 
     assert client.get(f"/api/v1/asyncapply/items/{item_id}/passport").status_code == 404
 
 
-def test_download_is_404_when_no_asset_was_generated(client: TestClient) -> None:
+def test_download_is_404_when_no_asset_was_generated(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
     item_id = created["items"][0]["id"]
 
@@ -104,7 +152,8 @@ def test_download_is_404_when_no_asset_was_generated(client: TestClient) -> None
     assert "no cv was generated" in response.json()["detail"]
 
 
-def test_update_item_status(client: TestClient) -> None:
+def test_update_item_status(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
     item_id = created["items"][0]["id"]
 
@@ -114,7 +163,8 @@ def test_update_item_status(client: TestClient) -> None:
     assert response.json()["status"] == "applied"
 
 
-def test_list_items_filters_by_status(client: TestClient) -> None:
+def test_list_items_filters_by_status(client: TestClient, make_user) -> None:
+    make_user()
     created = client.post(
         "/api/v1/asyncapply/batches", json={"items": ["https://a.com/1", "https://a.com/2"]}
     ).json()
@@ -126,7 +176,7 @@ def test_list_items_filters_by_status(client: TestClient) -> None:
     assert applied[0]["status"] == "applied"
 
 
-def test_a_logo_uploads_and_serves_back(client: TestClient, tmp_path, monkeypatch) -> None:
+def test_a_logo_uploads_and_serves_back(client: TestClient, make_user, tmp_path, monkeypatch) -> None:
     from services.asyncapply.settings import loader
 
     monkeypatch.setattr(
@@ -140,6 +190,7 @@ def test_a_logo_uploads_and_serves_back(client: TestClient, tmp_path, monkeypatc
     )
     monkeypatch.setattr(asyncapply, "get_settings", loader.get_settings)
 
+    make_user(role="admin")
     png_bytes = b"\x89PNG\r\n\x1a\nfake"
     put = client.put(
         "/api/v1/asyncapply/companies/Acme%20Inc/logo",
@@ -152,27 +203,32 @@ def test_a_logo_uploads_and_serves_back(client: TestClient, tmp_path, monkeypatc
     assert got.content == png_bytes
 
 
-def test_a_company_with_no_logo_is_404(client: TestClient) -> None:
+def test_uploading_a_logo_as_a_regular_user_is_forbidden(client: TestClient, make_user) -> None:
+    make_user()
+    png_bytes = b"\x89PNG\r\n\x1a\nfake"
+    res = client.put(
+        "/api/v1/asyncapply/companies/Acme%20Inc/logo",
+        files={"file": ("logo.png", png_bytes, "image/png")},
+    )
+    assert res.status_code == 403
+
+
+def test_a_company_with_no_logo_is_404(client: TestClient, make_user) -> None:
+    make_user()
     res = client.get("/api/v1/asyncapply/companies/NobodyUploadedThis/logo")
     assert res.status_code == 404
 
 
 def test_download_filename_is_hr_facing_not_the_storage_path(
-    client: TestClient, tmp_path, monkeypatch
+    client: TestClient, make_user, tmp_path
 ) -> None:
     """Two applications for the same role must not collide on disk, but the
     name offered to the browser should still read like a real application."""
-    import routers.asyncapply as asyncapply_router
     from database import get_db, models
     from main import app
-    from services.asyncapply.context.loader import AsyncApplyContext
 
-    profile = {"candidate": {"full_name": "Javier Dominguez Segura"}}
-    monkeypatch.setattr(
-        asyncapply_router,
-        "load_context",
-        lambda: AsyncApplyContext(profile=profile, voice_dna=""),
-    )
+    profile_yaml = "candidate:\n  full_name: Javier Dominguez Segura\n"
+    make_user(profile_yaml=profile_yaml)
 
     pdf = tmp_path / "internal-storage-name.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake")
@@ -192,10 +248,11 @@ def test_download_filename_is_hr_facing_not_the_storage_path(
     assert 'filename="Javier_D_SoftwareEngineerII_CV.pdf"' in response.headers["content-disposition"]
 
 
-def test_delete_item_removes_the_row_and_its_pdfs(client: TestClient, tmp_path) -> None:
+def test_delete_item_removes_the_row_and_its_pdfs(client: TestClient, make_user, tmp_path) -> None:
     from database import get_db, models
     from main import app
 
+    make_user()
     cv = tmp_path / "cv.pdf"
     cover = tmp_path / "cover.pdf"
     cv.write_bytes(b"%PDF cv")
@@ -216,13 +273,15 @@ def test_delete_item_removes_the_row_and_its_pdfs(client: TestClient, tmp_path) 
     assert not cover.exists()
 
 
-def test_deleting_an_item_with_no_pdfs_still_works(client: TestClient) -> None:
+def test_deleting_an_item_with_no_pdfs_still_works(client: TestClient, make_user) -> None:
     """A hard-stopped item never generated assets; deleting it must not 500."""
+    make_user()
     created = client.post("/api/v1/asyncapply/batches", json={"items": ["https://a.com/job"]}).json()
     item_id = created["items"][0]["id"]
 
     assert client.delete(f"/api/v1/asyncapply/items/{item_id}").status_code == 204
 
 
-def test_deleting_a_missing_item_is_404(client: TestClient) -> None:
+def test_deleting_a_missing_item_is_404(client: TestClient, make_user) -> None:
+    make_user()
     assert client.delete("/api/v1/asyncapply/items/99999").status_code == 404

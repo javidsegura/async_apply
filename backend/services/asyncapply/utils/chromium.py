@@ -29,6 +29,14 @@ VIEWPORT = {"width": 1440, "height": 900}
 _browser: Browser | None = None
 _lock = asyncio.Lock()
 
+# Contexts are cheap next to launching a browser, but not free: each holds a
+# real renderer process's memory. Multiple users can now submit batches at
+# the same time, so this caps how many pages are open across all of them at
+# once -- a burst queues behind the semaphore instead of spiking RAM on a
+# small box. Not measured yet at real multi-user load; tune once it's live.
+MAX_CONCURRENT_PAGES = 3
+_semaphore = asyncio.Semaphore(MAX_CONCURRENT_PAGES)
+
 
 async def _get_browser() -> Browser:
     """Return the shared browser, launching it once on first use.
@@ -55,9 +63,10 @@ async def open_page() -> AsyncIterator[Page]:
     Yields:
         Page: A blank page, ready to navigate or fill with content.
     """
-    browser = await _get_browser()
-    context = await browser.new_context(user_agent=USER_AGENT, viewport=VIEWPORT)
-    try:
-        yield await context.new_page()
-    finally:
-        await context.close()
+    async with _semaphore:
+        browser = await _get_browser()
+        context = await browser.new_context(user_agent=USER_AGENT, viewport=VIEWPORT)
+        try:
+            yield await context.new_page()
+        finally:
+            await context.close()

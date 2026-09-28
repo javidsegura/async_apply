@@ -74,10 +74,11 @@ async def process_batch(batch_id: int) -> None:
         db.commit()
 
         item_ids = [item.id for item in batch.items if item.state == "queued"]
+        user = batch.user
 
         try:
-            context = load_context()
-        except (FileNotFoundError, OSError) as exc:
+            context = load_context(user.profile_yaml, user.agent_dna_md)
+        except ValueError as exc:
             # Nothing can be evaluated without the candidate's context, so fail
             # every item with the same reason instead of rediscovering it N times.
             _fail_all(db, item_ids, f"context unavailable: {exc}")
@@ -88,7 +89,7 @@ async def process_batch(batch_id: int) -> None:
 
         async def run_one(item_id: int) -> None:
             async with semaphore:
-                await _process_item(item_id, context, settings)
+                await _process_item(item_id, context, settings, user.id)
 
         async with asyncio.TaskGroup() as task_group:
             for item_id in item_ids:
@@ -141,7 +142,9 @@ def _finalize(db: Session, batch: models.AsyncApplyBatch) -> None:
     db.commit()
 
 
-async def _process_item(item_id: int, context: AsyncApplyContext, settings: AsyncApplySettings) -> None:
+async def _process_item(
+    item_id: int, context: AsyncApplyContext, settings: AsyncApplySettings, user_id: int
+) -> None:
     """Run one item through the stages and record its outcome.
 
     This is the task boundary for a batch: it catches every exception so one bad
@@ -152,6 +155,7 @@ async def _process_item(item_id: int, context: AsyncApplyContext, settings: Asyn
         item_id: The asyncapply_items.id to process.
         context: The candidate's personal context, shared across the batch.
         settings: Resolved settings for this batch.
+        user_id: Whose budget this item's real cost is charged against.
     """
     db = SessionLocal()
     try:
@@ -179,6 +183,11 @@ async def _process_item(item_id: int, context: AsyncApplyContext, settings: Asyn
             item.cost_usd = usage.total_cost_usd
 
         item.ended_at = datetime.utcnow()
+
+        user = db.get(models.User, user_id)
+        if user is not None:
+            user.spent_usd += usage.total_cost_usd
+
         db.commit()
     finally:
         db.close()

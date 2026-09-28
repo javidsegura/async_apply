@@ -1,4 +1,4 @@
-"""Reads the candidate's context (context/user) and the stage prompts (context/modes)."""
+"""Builds the candidate's context from their DB row, and reads the stage prompts."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,42 +6,47 @@ from pathlib import Path
 import yaml
 
 CONTEXT_DIR = Path(__file__).parent
-USER_DIR = CONTEXT_DIR / "user"
 MODES_DIR = CONTEXT_DIR / "modes"
 TEMPLATES_DIR = CONTEXT_DIR / "templates"
+EXAMPLE_PROFILE_PATH = CONTEXT_DIR / "user" / "profile.example.yml"
 
 
 @dataclass
 class AsyncApplyContext:
-    """The candidate's personal context, loaded once per batch.
+    """One user's personal context, loaded once per batch.
 
-    profile.yml is the single source of truth: identity, targeting rules and the
-    whole CV (the fixed sections plus the roles and projects the model tailors).
+    profile is the single source of truth: identity, targeting rules and the
+    whole CV (the fixed sections plus the roles and projects the model
+    tailors). It comes from users.profile_yaml -- per-user, in the DB -- not
+    a shared file on disk, since a single deployment now serves many people.
     """
 
     profile: dict
-    voice_dna: str
+    agent_dna: str
 
 
-def load_context() -> AsyncApplyContext:
-    """Read profile.yml and voice_dna.md from context/user.
+def load_context(profile_yaml: str | None, agent_dna_md: str | None = "") -> AsyncApplyContext:
+    """Build a user's context from their stored profile and agent DNA.
+
+    Args:
+        profile_yaml: The user's profile.yml content, as stored on their row.
+        agent_dna_md: The user's agent DNA (writing-voice preferences), or "".
 
     Returns:
         The parsed personal context.
 
     Raises:
-        FileNotFoundError: if profile.yml is missing, since nothing can be
-            evaluated without it.
+        ValueError: if profile_yaml is empty or does not parse to a mapping --
+            nothing can be evaluated without it.
     """
-    profile_path = USER_DIR / "profile.yml"
-    if not profile_path.exists():
-        raise FileNotFoundError(f"{profile_path} is missing. See services/asyncapply/README.md.")
+    if not profile_yaml or not profile_yaml.strip():
+        raise ValueError("profile is empty -- complete your profile before submitting a batch")
 
-    voice_path = USER_DIR / "voice_dna.md"
-    return AsyncApplyContext(
-        profile=yaml.safe_load(profile_path.read_text()),
-        voice_dna=voice_path.read_text() if voice_path.exists() else "",
-    )
+    parsed = yaml.safe_load(profile_yaml)
+    if not isinstance(parsed, dict):
+        raise ValueError("profile does not parse to a YAML mapping")
+
+    return AsyncApplyContext(profile=parsed, agent_dna=agent_dna_md or "")
 
 
 def load_mode(name: str) -> str:

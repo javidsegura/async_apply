@@ -1,6 +1,9 @@
-"""Read/write access to everything that shapes the AsyncApply pipeline:
-profile.yml, voice_dna.md, the stage prompts in context/modes, and the
-pipeline settings row (model per stage, parallelism, timeouts).
+"""Read/write access to what shapes an AsyncApply run.
+
+profile and agent-dna are per-user, stored on the users row -- everyone edits
+their own. The stage prompts and pipeline settings (which model runs each
+stage, parallelism, timeouts) are shared across every user of this
+deployment, so only the admin can change them.
 """
 
 import re
@@ -10,15 +13,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
-from services.asyncapply.context.loader import MODES_DIR, USER_DIR
+from database import get_db, models
+from services.asyncapply.auth import get_current_user, require_admin
+from services.asyncapply.context.loader import MODES_DIR
 from services.asyncapply.settings import AVAILABLE_MODELS, get_or_create_row
 
 router = APIRouter(prefix="/asyncapply/config", tags=["asyncapply-config"])
 
 
 class ContentPayload(BaseModel):
-    """Raw text in, raw text out -- used for every editable config file."""
+    """Raw text in, raw text out -- used for every editable text config."""
 
     content: str
 
@@ -37,113 +41,86 @@ class SettingsPayload(BaseModel):
     output_dir: str | None = None
 
 
-PROFILE_PATH = USER_DIR / "profile.yml"
-VOICE_DNA_PATH = USER_DIR / "voice_dna.md"
-
 # Mode names are used to build a file path, so they are checked against the
 # actual files on disk rather than trusted from the URL -- there is no other
 # way for a user-supplied string to become a filesystem path in this router.
 _MODE_NAME_RE = re.compile(r"^[a-z_]+$")
 
 
-def _read(path) -> dict:
-    """Read one config file's raw text.
-
-    Args:
-        path: The file to read.
-
-    Returns:
-        {"content": the file's text, or "" if it does not exist yet}.
-    """
-    return {"content": path.read_text() if path.exists() else ""}
+@router.get("/profile")
+def get_profile(user: models.User = Depends(get_current_user)) -> dict:
+    """Read the current user's profile.yml, for the editor to load."""
+    return {"content": user.profile_yaml or ""}
 
 
-def _write_text(path, content: str) -> dict:
-    """Write one config file's raw text, no parsing.
+@router.put("/profile")
+def update_profile(
+    payload: ContentPayload,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+) -> dict:
+    """Overwrite the current user's profile.yml after validating it parses.
 
-    Args:
-        path: The file to write.
-        content: The new contents.
-
-    Returns:
-        {"content": what was written}.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
-    return {"content": content}
-
-
-def _write_yaml(path, content: str) -> dict:
-    """Write profile.yml, refusing anything that would not load back.
-
-    A bad edit here is not cosmetic -- load_context() reads this file before
-    every single batch, so a syntax error or a non-mapping document would take
-    the whole pipeline down on the next submission. Validating before writing
-    means the file on disk is never worse than what was already there.
-
-    Args:
-        path: The file to write.
-        content: The proposed new YAML text.
-
-    Returns:
-        {"content": what was written}.
+    A bad edit here is not cosmetic -- the worker reads this before every
+    batch, so a syntax error or a non-mapping document would take the whole
+    pipeline down on the next submission. Validating before writing means
+    the stored profile is never worse than what was already there.
 
     Raises:
         HTTPException: 422 if the YAML does not parse to a mapping.
     """
     try:
-        parsed = yaml.safe_load(content)
+        parsed = yaml.safe_load(payload.content)
     except yaml.YAMLError as exc:
         raise HTTPException(status_code=422, detail=f"invalid YAML: {exc}") from exc
     if not isinstance(parsed, dict):
         raise HTTPException(status_code=422, detail="profile.yml must be a YAML mapping")
-    return _write_text(path, content)
+
+    user.profile_yaml = payload.content
+    db.commit()
+    return {"content": payload.content}
 
 
-@router.get("/profile")
-def get_profile() -> dict:
-    """Read profile.yml as raw text, for the editor to load into a textarea."""
-    return _read(PROFILE_PATH)
+@router.get("/agent-dna")
+def get_agent_dna(user: models.User = Depends(get_current_user)) -> dict:
+    """Read the current user's agent DNA."""
+    return {"content": user.agent_dna_md or ""}
 
 
-@router.put("/profile")
-def update_profile(payload: ContentPayload) -> dict:
-    """Overwrite profile.yml after validating it parses as a YAML mapping."""
-    return _write_yaml(PROFILE_PATH, payload.content)
-
-
-@router.get("/voice-dna")
-def get_voice_dna() -> dict:
-    """Read voice_dna.md as raw text."""
-    return _read(VOICE_DNA_PATH)
-
-
-@router.put("/voice-dna")
-def update_voice_dna(payload: ContentPayload) -> dict:
-    """Overwrite voice_dna.md. Free-form prose, nothing to validate."""
-    return _write_text(VOICE_DNA_PATH, payload.content)
+@router.put("/agent-dna")
+def update_agent_dna(
+    payload: ContentPayload,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+) -> dict:
+    """Overwrite the current user's agent DNA. Free-form, nothing to validate."""
+    user.agent_dna_md = payload.content
+    db.commit()
+    return {"content": payload.content}
 
 
 @router.get("/modes")
-def list_modes() -> list[str]:
-    """List the stage prompt names available to read and edit."""
+def list_modes(_admin: models.User = Depends(require_admin)) -> list[str]:
+    """List the stage prompt names available to read and edit. Admin only."""
     return sorted(p.stem for p in MODES_DIR.glob("*.md"))
 
 
 @router.get("/modes/{name}")
-def get_mode(name: str) -> dict:
-    """Read one stage prompt's raw text.
+def get_mode(name: str, _admin: models.User = Depends(require_admin)) -> dict:
+    """Read one stage prompt's raw text. Admin only.
 
     Raises:
         HTTPException: 404 if the name is not a real mode file.
     """
     path = _mode_path(name)
-    return _read(path)
+    return {"content": path.read_text() if path.exists() else ""}
 
 
 @router.put("/modes/{name}")
-def update_mode(name: str, payload: ContentPayload) -> dict:
-    """Overwrite one stage prompt. Free-form markdown, nothing to validate.
+def update_mode(
+    name: str, payload: ContentPayload, _admin: models.User = Depends(require_admin)
+) -> dict:
+    """Overwrite one stage prompt. Admin only, free-form markdown.
 
     Raises:
         HTTPException: 404 if the name is not an existing mode file -- this
@@ -151,29 +128,36 @@ def update_mode(name: str, payload: ContentPayload) -> dict:
             stages, since a new stage needs code to call it regardless.
     """
     path = _mode_path(name, must_exist=True)
-    return _write_text(path, payload.content)
+    path.write_text(payload.content)
+    return {"content": payload.content}
 
 
 @router.get("/available-models")
-def available_models() -> list[str]:
+def available_models(_user: models.User = Depends(get_current_user)) -> list[str]:
     """The curated model options the settings UI may pick from per stage."""
     return AVAILABLE_MODELS
 
 
 @router.get("/settings")
-def get_pipeline_settings(db: Session = Depends(get_db)) -> dict:
-    """Read the live pipeline settings: models per stage, and the tuning knobs.
+def get_pipeline_settings(
+    db: Session = Depends(get_db), _admin: models.User = Depends(require_admin)
+) -> dict:
+    """Read the live pipeline settings: models per stage, and the tuning knobs. Admin only.
 
     The API key and base URL are never included here -- they stay in env
-    vars, since this app has no auth and a key does not belong behind an
-    endpoint any request can read.
+    vars, since a settings table any authenticated user could read is not
+    where a key belongs.
     """
     return _settings_dict(get_or_create_row(db))
 
 
 @router.put("/settings")
-def update_pipeline_settings(payload: SettingsPayload, db: Session = Depends(get_db)) -> dict:
-    """Update the pipeline settings. Takes effect on the next batch, no restart.
+def update_pipeline_settings(
+    payload: SettingsPayload,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+) -> dict:
+    """Update the pipeline settings. Admin only. Takes effect on the next batch.
 
     Raises:
         HTTPException: 422 if a chosen model isn't one of the curated options.

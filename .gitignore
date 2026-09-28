@@ -15,3 +15,4 @@ backend/services/asyncapply/context/user/*
 
 # generated PDFs
 backend/services/asyncapply/output/
+backend/firebase-service-account.json

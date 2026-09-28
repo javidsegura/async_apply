@@ -7,8 +7,9 @@ from sqlalchemy.pool import StaticPool
 
 from database import Base, models
 from services.asyncapply import worker
-from services.asyncapply.context import AsyncApplyContext
 from services.asyncapply.stages.utils import Evaluation, Extraction, Shortlist
+
+_MINIMAL_PROFILE = "candidate: {}\n"
 
 
 @pytest.fixture
@@ -25,9 +26,15 @@ def db_session_factory(monkeypatch: pytest.MonkeyPatch):
     return TestingSessionLocal
 
 
-def _make_batch(session_factory, raw_inputs: list[str]) -> int:
+def _make_batch(session_factory, raw_inputs: list[str], profile_yaml: str | None = _MINIMAL_PROFILE) -> int:
+    """Create a user (with a minimal valid profile, unless told otherwise) and
+    a batch owned by them -- real load_context() then runs unmocked, so a
+    test only needs to give it an empty-but-valid profile to work with."""
     db = session_factory()
-    batch = models.AsyncApplyBatch(state="queued")
+    user = models.User(firebase_uid="test-uid", email="test@example.com", profile_yaml=profile_yaml)
+    db.add(user)
+    db.flush()
+    batch = models.AsyncApplyBatch(state="queued", user_id=user.id)
     db.add(batch)
     db.flush()
     for raw_input in raw_inputs:
@@ -44,7 +51,6 @@ async def test_process_batch_marks_hard_stopped_item_done_without_assets(
 ) -> None:
     batch_id = _make_batch(db_session_factory, ["https://example.com/job"])
 
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )
@@ -77,7 +83,6 @@ async def test_process_batch_marks_extraction_failure_as_failed(
 ) -> None:
     batch_id = _make_batch(db_session_factory, ["https://example.com/dead-link"])
 
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=True, reason="404"))
     )
@@ -95,8 +100,6 @@ async def test_process_batch_marks_extraction_failure_as_failed(
 @pytest.mark.anyio
 async def test_process_item_records_exception_as_error(db_session_factory, monkeypatch: pytest.MonkeyPatch) -> None:
     batch_id = _make_batch(db_session_factory, ["broken input"])
-
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
 
     async def boom(*args, **kwargs):
         raise ValueError("agent returned garbage")
@@ -116,7 +119,6 @@ async def test_extraction_failure_is_tagged_by_stage(db_session_factory, monkeyp
     """The frontend's pipeline view reads this prefix to know which stage
     actually failed, so it has to survive being re-wrapped."""
     batch_id = _make_batch(db_session_factory, ["broken input"])
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
 
     async def boom(*args, **kwargs):
         raise ValueError("no route to page")
@@ -133,7 +135,6 @@ async def test_evaluation_failure_is_tagged_by_stage(
     db_session_factory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     batch_id = _make_batch(db_session_factory, ["https://a.com/job"])
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )
@@ -154,8 +155,6 @@ async def test_one_failing_item_does_not_stop_the_rest_of_the_batch(
 ) -> None:
     """An unexpected error on one item must not tear down the whole task group."""
     batch_id = _make_batch(db_session_factory, ["good", "bad"])
-
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
 
     async def extract(raw_input: str, **kwargs):
         if raw_input == "bad":
@@ -182,14 +181,9 @@ async def test_one_failing_item_does_not_stop_the_rest_of_the_batch(
 
 @pytest.mark.anyio
 async def test_missing_context_fails_items_without_wedging_the_batch(
-    db_session_factory, monkeypatch: pytest.MonkeyPatch
+    db_session_factory,
 ) -> None:
-    batch_id = _make_batch(db_session_factory, ["https://example.com/job"])
-
-    def no_context():
-        raise FileNotFoundError("profile.yml is missing")
-
-    monkeypatch.setattr(worker, "load_context", no_context)
+    batch_id = _make_batch(db_session_factory, ["https://example.com/job"], profile_yaml=None)
 
     await worker.process_batch(batch_id)
 
@@ -197,7 +191,7 @@ async def test_missing_context_fails_items_without_wedging_the_batch(
     batch = db.get(models.AsyncApplyBatch, batch_id)
     assert batch.state == "failed"
     assert batch.ended_at is not None
-    assert "profile.yml is missing" in batch.items[0].error
+    assert "profile is empty" in batch.items[0].error
 
 
 def _async_return(value):
@@ -216,7 +210,6 @@ async def test_full_evaluation_is_persisted_to_sql(
     """The full evaluation must be persisted, not just the headline fields."""
     batch_id = _make_batch(db_session_factory, ["https://example.com/job"])
 
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages,
         "extract_jd",
@@ -268,7 +261,6 @@ async def test_hard_stopped_item_gets_hard_stopped_status(
 ) -> None:
     batch_id = _make_batch(db_session_factory, ["https://example.com/job"])
 
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )
@@ -297,7 +289,6 @@ async def test_all_items_succeeding_is_done_not_partial(
 ) -> None:
     batch_id = _make_batch(db_session_factory, ["a", "b"])
 
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )
@@ -314,13 +305,53 @@ async def test_all_items_succeeding_is_done_not_partial(
 
 
 @pytest.mark.anyio
+async def test_a_completed_item_s_cost_is_charged_to_its_owner(
+    db_session_factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    batch_id = _make_batch(db_session_factory, ["https://example.com/job"])
+
+    monkeypatch.setattr(
+        worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
+    )
+    monkeypatch.setattr(
+        worker.stages,
+        "evaluate_job",
+        _async_return(Evaluation(company="Acme", role="Eng", hard_stop_reason="capped")),
+    )
+
+    from services.asyncapply.llm import UsageLog
+
+    def fake_track_usage():
+        from contextlib import contextmanager
+
+        @contextmanager
+        def _ctx():
+            usage = UsageLog()
+            usage.entries.append({"tokens": 100, "cost_usd": 0.42})
+            yield usage
+
+        return _ctx()
+
+    monkeypatch.setattr(worker, "track_usage", fake_track_usage)
+
+    await worker.process_batch(batch_id)
+
+    db = db_session_factory()
+    batch = db.get(models.AsyncApplyBatch, batch_id)
+    assert db.get(models.User, batch.user_id).spent_usd == 0.42
+
+
+@pytest.mark.anyio
 async def test_recover_orphaned_work_fails_stuck_items_and_finalizes_batches(
     db_session_factory,
 ) -> None:
     """A container restart kills the in-memory BackgroundTask mid-batch,
     leaving rows at queued/running with nothing left to ever finish them."""
     db = db_session_factory()
-    batch = models.AsyncApplyBatch(state="running")
+    user = models.User(firebase_uid="u", email="u@example.com")
+    db.add(user)
+    db.flush()
+    batch = models.AsyncApplyBatch(state="running", user_id=user.id)
     db.add(batch)
     db.flush()
     stuck = models.AsyncApplyItem(batch_id=batch.id, raw_input="a", state="running")
@@ -344,7 +375,10 @@ async def test_recover_orphaned_work_fails_stuck_items_and_finalizes_batches(
 @pytest.mark.anyio
 async def test_recover_orphaned_work_leaves_finished_batches_alone(db_session_factory) -> None:
     db = db_session_factory()
-    batch = models.AsyncApplyBatch(state="done")
+    user = models.User(firebase_uid="u", email="u@example.com")
+    db.add(user)
+    db.flush()
+    batch = models.AsyncApplyBatch(state="done", user_id=user.id)
     db.add(batch)
     db.flush()
     db.add(models.AsyncApplyItem(batch_id=batch.id, raw_input="a", state="done"))
@@ -364,7 +398,6 @@ async def test_asset_and_contact_errors_both_surface_when_both_fail(
     """The two steps run concurrently, so a failure in one must not hide a
     failure in the other -- both messages should reach the item."""
     batch_id = _make_batch(db_session_factory, ["https://a.com/job"])
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )
@@ -398,7 +431,6 @@ async def test_assets_and_contact_lookup_run_concurrently(
     import asyncio
 
     batch_id = _make_batch(db_session_factory, ["https://a.com/job"])
-    monkeypatch.setattr(worker, "load_context", lambda: AsyncApplyContext(profile={}, voice_dna=""))
     monkeypatch.setattr(
         worker.stages, "extract_jd", _async_return(Extraction(extraction_failed=False, jd_text="JD"))
     )

@@ -80,7 +80,7 @@ async def evaluate_job(jd_text: str, context: AsyncApplyContext) -> Evaluation:
     system_prompt = (
         f"{load_mode('evaluate_job')}\n\n"
         f"## Candidate profile and CV\n```json\n{json.dumps(context.profile)}\n```\n\n"
-        f"## Writing style rules\n{context.voice_dna}"
+        f"## Writing style rules\n{context.agent_dna}"
     )
     draft = await ask("evaluate_job", system_prompt, jd_text, EvaluationDraft)
     reason = _hard_stop_reason(draft, jd_text)
