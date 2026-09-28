@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal, models
 from services.asyncapply import stages
+from services.asyncapply.agent_dna import render_agent_dna
 from services.asyncapply.context import AsyncApplyContext, load_context
 from services.asyncapply.llm import track_usage
-from services.asyncapply.settings import AsyncApplySettings, get_settings
+from services.asyncapply.settings import AsyncApplySettings, get_or_create_row, get_settings
 from services.asyncapply.stages.extract_jd import is_url
 from services.asyncapply.stages.utils import Evaluation
 from services.asyncapply.utils import documents
@@ -75,9 +76,11 @@ async def process_batch(batch_id: int) -> None:
 
         item_ids = [item.id for item in batch.items if item.state == "queued"]
         user = batch.user
+        admin_note = get_or_create_row(db).agent_dna_admin_note
+        agent_dna = render_agent_dna(user.agent_dna_choices, user.agent_dna_md, admin_note)
 
         try:
-            context = load_context(user.profile, user.agent_dna_md)
+            context = load_context(user.profile, agent_dna)
         except ValueError as exc:
             # Nothing can be evaluated without the candidate's context, so fail
             # every item with the same reason instead of rediscovering it N times.

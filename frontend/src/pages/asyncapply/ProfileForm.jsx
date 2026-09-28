@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Plus, X, Loader2, ChevronDown } from 'lucide-react'
+import { Sparkles, Plus, X, Loader2, ChevronDown, Check } from 'lucide-react'
 import { getAsyncApplyProfile, updateAsyncApplyProfile, fillAsyncApplyProfileFromCv } from '../../api.js'
 import { COUNTRIES, COUNTRY_BY_CODE, DIAL_CODES } from './lib/countries.js'
 
@@ -30,6 +30,15 @@ const MONTHS = [
 ]
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 20 }, (_, i) => CURRENT_YEAR + 6 - i)
+
+const MILESTONES = [
+  { key: 'identity', label: 'Identity', check: (p) => !!p.candidate.full_name.trim() },
+  { key: 'targeting', label: 'Targeting', check: (p) => p.location.authorized_in.length > 0 && p.target_roles.length > 0 },
+  { key: 'cv', label: 'CV basics', check: (p) => p.cv.technologies.length > 0 },
+  { key: 'education', label: 'Education', check: (p) => p.cv.education.length > 0 },
+  { key: 'experience', label: 'Experience', check: (p) => p.cv.experience.length > 0 },
+  { key: 'projects', label: 'Projects', check: (p) => p.cv.projects.length > 0 },
+]
 
 /**
  * The candidate's whole profile as a real form: identity, job-search
@@ -109,6 +118,8 @@ export default function ProfileForm() {
           {filling ? 'Reading your CV...' : 'Fill with AI'}
         </button>
       </div>
+
+      <Milestones profile={profile} />
 
       <Section title="Identity" emoji="🪪">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -227,6 +238,48 @@ function mergeExtraction(profile, extracted) {
     if (!next.cv[key]?.length && extracted[key]?.length) next.cv[key] = extracted[key]
   }
   return next
+}
+
+/**
+ * A visible sense of "how done am I": each core section as a step, checked
+ * off the moment its own completeness check passes -- so filling in the
+ * form feels like progress, not an open-ended form with no end in sight.
+ */
+function Milestones({ profile }) {
+  const done = MILESTONES.filter((m) => m.check(profile))
+  const pct = Math.round((done.length / MILESTONES.length) * 100)
+
+  return (
+    <div className="rounded-2xl border border-stone-200/70 bg-white/80 px-5 py-3.5">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-medium text-stone-600">Profile progress</span>
+        <span className="text-xs text-stone-400">{done.length} of {MILESTONES.length} · {pct}%</span>
+      </div>
+      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-stone-100">
+        <motion.div
+          className="h-full bg-gradient-to-r from-sky-300 to-emerald-300"
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {MILESTONES.map((m) => {
+          const complete = m.check(profile)
+          return (
+            <span
+              key={m.key}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                complete ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-50 text-stone-400'
+              }`}
+            >
+              {complete ? <Check size={11} /> : <span className="h-1.5 w-1.5 rounded-full bg-stone-300" />}
+              {m.label}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function Section({ title, emoji, hint, children }) {

@@ -98,9 +98,37 @@ def test_a_bad_cv_upload_is_a_422_not_a_500(client: TestClient, make_user, monke
 
 def test_agent_dna_round_trips(client: TestClient, make_user):
     make_user()
-    client.put("/api/v1/asyncapply/config/agent-dna", json={"content": "No em dashes."})
-    got = client.get("/api/v1/asyncapply/config/agent-dna")
-    assert got.json()["content"] == "No em dashes."
+    client.put(
+        "/api/v1/asyncapply/config/agent-dna",
+        json={"choices": {"tone": "playful"}, "notes": "Sign off with my name."},
+    )
+    got = client.get("/api/v1/asyncapply/config/agent-dna").json()
+    assert got["choices"] == {"tone": "playful"}
+    assert got["notes"] == "Sign off with my name."
+    assert got["questions"][0]["key"] == "rhythm"
+
+
+def test_a_new_user_s_agent_dna_defaults_to_empty(client: TestClient, make_user):
+    make_user()
+    got = client.get("/api/v1/asyncapply/config/agent-dna").json()
+    assert got["choices"] == {}
+    assert got["notes"] == ""
+    assert len(got["questions"]) == 6
+
+
+def test_agent_dna_admin_note_round_trips_for_an_admin(client: TestClient, make_user):
+    make_user(role="admin")
+    client.put("/api/v1/asyncapply/config/agent-dna-admin-note", json={"content": "Never mention salary first."})
+    got = client.get("/api/v1/asyncapply/config/agent-dna-admin-note")
+    assert got.json()["content"] == "Never mention salary first."
+
+
+def test_agent_dna_admin_note_is_forbidden_to_a_regular_user(client: TestClient, make_user):
+    make_user()
+    assert client.get("/api/v1/asyncapply/config/agent-dna-admin-note").status_code == 403
+    assert client.put(
+        "/api/v1/asyncapply/config/agent-dna-admin-note", json={"content": "x"}
+    ).status_code == 403
 
 
 def test_modes_are_listed_and_editable_by_an_admin(client: TestClient, make_user, tmp_path, monkeypatch):

@@ -176,8 +176,16 @@ export function getAsyncApplyAgentDna() {
   return request('/asyncapply/config/agent-dna')
 }
 
-export function updateAsyncApplyAgentDna(content) {
-  return request('/asyncapply/config/agent-dna', { method: 'PUT', body: JSON.stringify({ content }) })
+export function updateAsyncApplyAgentDna(choices, notes) {
+  return request('/asyncapply/config/agent-dna', { method: 'PUT', body: JSON.stringify({ choices, notes }) })
+}
+
+export function getAsyncApplyAgentDnaAdminNote() {
+  return request('/asyncapply/config/agent-dna-admin-note')
+}
+
+export function updateAsyncApplyAgentDnaAdminNote(content) {
+  return request('/asyncapply/config/agent-dna-admin-note', { method: 'PUT', body: JSON.stringify({ content }) })
 }
 
 export function getAsyncApplyMe() {

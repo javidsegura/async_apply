@@ -11,9 +11,14 @@ from database.database import Base
 class User(Base):
     """One person using AsyncApply, provisioned on first Firebase login.
 
-    profile and agent_dna_md are this user's context -- the same shape
-    the old single-tenant app read from context/user/*.yml on disk, now
-    per-row so many users share one deployment. token_budget_usd and
+    profile is this user's CV/targeting context -- the same shape the old
+    single-tenant app read from context/user/*.yml on disk, now per-row so
+    many users share one deployment. agent_dna_choices holds their answers
+    to the fixed vibe questions (services/asyncapply/agent_dna.py);
+    agent_dna_md is just their own free-text "anything else" notes, not the
+    whole composed writing-style text anymore -- that gets built by
+    render_agent_dna() from choices + notes + the admin's global note.
+    token_budget_usd and
     spent_usd gate batch submission: an admin sets the budget by hand
     (there is no self-serve billing yet), spent_usd accumulates from each
     item's real OpenRouter cost as it completes.
@@ -28,6 +33,7 @@ class User(Base):
 
     profile: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     agent_dna_md: Mapped[str | None] = mapped_column(String, nullable=True)
+    agent_dna_choices: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     token_budget_usd: Mapped[float] = mapped_column(Float, nullable=False, default=2.0)
     spent_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -63,6 +69,7 @@ class AsyncApplySettings(Base):
     fetch_timeout: Mapped[int] = mapped_column(Integer, nullable=False, default=45)
     cv_max_pages: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     output_dir: Mapped[str | None] = mapped_column(String, nullable=True)
+    agent_dna_admin_note: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class AsyncApplyBatch(Base):

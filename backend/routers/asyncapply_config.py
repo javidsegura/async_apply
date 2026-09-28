@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db, models
+from services.asyncapply.agent_dna import questions_payload
 from services.asyncapply.auth import get_current_user, require_admin
 from services.asyncapply.context.loader import MODES_DIR
 from services.asyncapply.profile_extraction import extract_profile_from_cv
@@ -26,6 +27,13 @@ class ContentPayload(BaseModel):
     """Raw text in, raw text out -- used for every editable text config."""
 
     content: str
+
+
+class AgentDnaPayload(BaseModel):
+    """A user's vibe-question answers plus their own free-text notes."""
+
+    choices: dict[str, str]
+    notes: str = ""
 
 
 class SettingsPayload(BaseModel):
@@ -98,18 +106,48 @@ async def fill_profile_from_cv(
 
 @router.get("/agent-dna")
 def get_agent_dna(user: models.User = Depends(get_current_user)) -> dict:
-    """Read the current user's agent DNA."""
-    return {"content": user.agent_dna_md or ""}
+    """Read the current user's vibe-question answers, notes, and the question taxonomy.
+
+    The taxonomy is served from here rather than duplicated in the frontend,
+    so there is exactly one place the questions and their options are defined.
+    """
+    return {
+        "questions": questions_payload(),
+        "choices": user.agent_dna_choices or {},
+        "notes": user.agent_dna_md or "",
+    }
 
 
 @router.put("/agent-dna")
 def update_agent_dna(
-    payload: ContentPayload,
+    payload: AgentDnaPayload,
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ) -> dict:
-    """Overwrite the current user's agent DNA. Free-form, nothing to validate."""
-    user.agent_dna_md = payload.content
+    """Save the current user's vibe-question answers and free-text notes."""
+    user.agent_dna_choices = payload.choices
+    user.agent_dna_md = payload.notes
+    db.commit()
+    return {"questions": questions_payload(), "choices": user.agent_dna_choices, "notes": user.agent_dna_md}
+
+
+@router.get("/agent-dna-admin-note")
+def get_agent_dna_admin_note(
+    db: Session = Depends(get_db), _admin: models.User = Depends(require_admin)
+) -> dict:
+    """Read the global agent-DNA rule block, appended for every user. Admin only."""
+    return {"content": get_or_create_row(db).agent_dna_admin_note or ""}
+
+
+@router.put("/agent-dna-admin-note")
+def update_agent_dna_admin_note(
+    payload: ContentPayload,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+) -> dict:
+    """Overwrite the global agent-DNA rule block. Admin only, free-form."""
+    row = get_or_create_row(db)
+    row.agent_dna_admin_note = payload.content
     db.commit()
     return {"content": payload.content}
 
