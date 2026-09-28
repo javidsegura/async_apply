@@ -54,6 +54,16 @@ services:
       - backend
 
 volumes:
+  # Explicit, distinct names: the old Control Panel monorepo's compose file
+  # also used the literal name "asyncapply_pg-data" for its own Postgres
+  # volume (from before this app was split out). Docker volume names are
+  # global, not scoped per docker-compose project, so an unqualified name
+  # here would silently mount this app's containers onto that repo's real
+  # personal data volume instead of a fresh one -- caught this exact
+  # collision during first boot; alembic refused to run against unfamiliar
+  # migration history and no data was touched, but the name has to be
+  # unambiguous so it can't happen again.
   pg-data:
-    name: asyncapply_pg-data
+    name: asyncapply_saas_pg_data
   asyncapply-output:
+    name: asyncapply_saas_output

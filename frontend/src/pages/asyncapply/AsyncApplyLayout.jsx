@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutGrid, Send, Database, BarChart3, SlidersHorizontal } from 'lucide-react'
+import { LayoutGrid, Send, Database, BarChart3, SlidersHorizontal, LogOut } from 'lucide-react'
+import { useAuth } from '../../auth/AuthProvider.jsx'
 
 const TABS = [
   { to: '/', label: 'Hub', icon: LayoutGrid, end: true },
@@ -14,9 +15,11 @@ const TABS = [
  * gradient ground, so every view inside shares the same frame.
  */
 export default function AsyncApplyLayout() {
+  const { user, signOutUser } = useAuth()
+
   return (
-    <div className="-mx-6 -my-6 min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-6 py-6">
-      <nav className="mb-5 flex flex-wrap gap-1 rounded-2xl border border-stone-200/60 bg-white/70 p-1 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-6 py-6">
+      <nav className="mb-5 flex flex-wrap items-center gap-1 rounded-2xl border border-stone-200/60 bg-white/70 p-1 backdrop-blur-sm">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}
@@ -34,6 +37,16 @@ export default function AsyncApplyLayout() {
             {tab.label}
           </NavLink>
         ))}
+        <div className="ml-auto flex items-center gap-2 pr-2">
+          {user?.email && <span className="hidden text-[11px] text-stone-400 sm:inline">{user.email}</span>}
+          <button
+            onClick={signOutUser}
+            title="Sign out"
+            className="flex items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium text-stone-400 transition-colors hover:bg-stone-100/70 hover:text-stone-700"
+          >
+            <LogOut size={13} />
+          </button>
+        </div>
       </nav>
       <Outlet />
     </div>

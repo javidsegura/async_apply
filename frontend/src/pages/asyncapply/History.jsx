@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, ChevronDown, LayoutGrid, Rows3, Hash, Trash2, Ban } from 'lucide-react'
 import {
-  getAsyncApplyItems, updateAsyncApplyItem, deleteAsyncApplyItem, asyncApplyLogoUrl,
+  getAsyncApplyItems, updateAsyncApplyItem, deleteAsyncApplyItem, fetchAsyncApplyLogoUrl,
 } from '../../api.js'
 import ItemDetail from './ItemDetail.jsx'
 import { Panel, Stars, StatusSelect, SectionHead } from './lib/ui.jsx'
@@ -511,10 +511,28 @@ function TableRow({ item, onStatusChange, onDelete }) {
 }
 
 function CompanyMark({ company, size = 30 }) {
-  const [broken, setBroken] = useState(false)
+  const [blobUrl, setBlobUrl] = useState(null)
   const style = { width: size, height: size }
 
-  if (!company || broken) {
+  useEffect(() => {
+    if (!company) return
+    let cancelled = false
+    let created = null
+    fetchAsyncApplyLogoUrl(company).then((url) => {
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        return
+      }
+      created = url
+      setBlobUrl(url)
+    })
+    return () => {
+      cancelled = true
+      if (created) URL.revokeObjectURL(created)
+    }
+  }, [company])
+
+  if (!company || !blobUrl) {
     return (
       <div
         style={style}
@@ -526,8 +544,7 @@ function CompanyMark({ company, size = 30 }) {
   }
   return (
     <img
-      src={asyncApplyLogoUrl(company)}
-      onError={() => setBroken(true)}
+      src={blobUrl}
       alt=""
       style={style}
       className="shrink-0 rounded-lg bg-white object-contain ring-1 ring-stone-100"

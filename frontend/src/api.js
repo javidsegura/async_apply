@@ -2,6 +2,8 @@
  * Thin fetch wrapper around the AsyncApply REST API.
  */
 
+import { auth } from './firebase.js'
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
 /**
@@ -22,6 +24,22 @@ function toQueryString(params) {
 }
 
 /**
+ * Get a fresh Firebase ID token for the signed-in user, if any.
+ *
+ * getIdToken() returns the cached token and transparently refreshes it once
+ * it's within five minutes of expiring, so callers never need to think
+ * about token lifetime themselves.
+ *
+ * @returns {Promise<string|null>}
+ */
+async function authHeader() {
+  const user = auth.currentUser
+  if (!user) return {}
+  const token = await user.getIdToken()
+  return { Authorization: `Bearer ${token}` }
+}
+
+/**
  * Perform a fetch against the API and parse the JSON response.
  *
  * @param {string} path - Path relative to the API base URL.
@@ -30,9 +48,15 @@ function toQueryString(params) {
  */
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     ...options,
   })
+  if (res.status === 401) {
+    // The token expired or was revoked mid-session -- bounce to login
+    // rather than surfacing a confusing generic error.
+    window.location.href = '/login'
+    throw new Error('session expired')
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`API error ${res.status} on ${path}: ${text}`)
@@ -71,12 +95,44 @@ export function deleteAsyncApplyItem(id) {
   return request(`/asyncapply/items/${id}`, { method: 'DELETE' })
 }
 
-export function asyncApplyAssetUrl(itemId, asset) {
-  return `${BASE_URL}/asyncapply/items/${itemId}/${asset}`
+/**
+ * Fetch an authenticated GET as a blob and return an object URL for it.
+ *
+ * Both the asset download and the logo image sit behind auth now, so a
+ * plain <img src> / <a href> can't reach them -- the browser never attaches
+ * a custom header to those native requests. Fetching by hand and handing
+ * back a blob: URL is the standard workaround.
+ *
+ * @param {string} path - Path relative to the API base URL.
+ * @returns {Promise<string|null>} An object URL, or null on a 404.
+ */
+async function fetchBlobUrl(path) {
+  const res = await fetch(`${BASE_URL}${path}`, { headers: await authHeader() })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`API error ${res.status} on ${path}`)
+  return URL.createObjectURL(await res.blob())
 }
 
-export function asyncApplyLogoUrl(company) {
-  return `${BASE_URL}/asyncapply/companies/${encodeURIComponent(company)}/logo`
+/**
+ * Open one item's CV or cover letter PDF in a new tab.
+ *
+ * @param {number} itemId
+ * @param {'cv'|'cover-letter'} asset
+ */
+export async function openAsyncApplyAsset(itemId, asset) {
+  const url = await fetchBlobUrl(`/asyncapply/items/${itemId}/${asset}`)
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+/**
+ * Fetch a company's logo as a blob URL, for an <img src>. Resolves to null
+ * if no logo was uploaded.
+ *
+ * @param {string} company
+ * @returns {Promise<string|null>}
+ */
+export function fetchAsyncApplyLogoUrl(company) {
+  return fetchBlobUrl(`/asyncapply/companies/${encodeURIComponent(company)}/logo`)
 }
 
 export async function uploadAsyncApplyLogo(company, file) {
@@ -84,6 +140,7 @@ export async function uploadAsyncApplyLogo(company, file) {
   form.append('file', file)
   const res = await fetch(`${BASE_URL}/asyncapply/companies/${encodeURIComponent(company)}/logo`, {
     method: 'PUT',
+    headers: await authHeader(),
     body: form,
   })
   if (!res.ok) throw new Error(`API error ${res.status} uploading logo`)

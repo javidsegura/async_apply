@@ -5,7 +5,7 @@ import {
   GraduationCap, Building2, Gauge, Coins, ThumbsUp, ThumbsDown, Users,
   ChevronRight, ChevronDown,
 } from 'lucide-react'
-import { asyncApplyAssetUrl, uploadAsyncApplyLogo } from '../../api.js'
+import { openAsyncApplyAsset, uploadAsyncApplyLogo } from '../../api.js'
 import { duration, countryFlag } from './lib/format.js'
 
 export { duration }
@@ -129,9 +129,13 @@ export default function ItemDetail({ item, onLogoUploaded }) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {item.cv_pdf_path && <Pill href={asyncApplyAssetUrl(item.id, 'cv')} icon={FileText}>CV</Pill>}
+        {item.cv_pdf_path && (
+          <Pill onOpen={() => openAsyncApplyAsset(item.id, 'cv')} icon={FileText}>CV</Pill>
+        )}
         {item.cover_letter_pdf_path && (
-          <Pill href={asyncApplyAssetUrl(item.id, 'cover-letter')} icon={Download}>Cover letter</Pill>
+          <Pill onOpen={() => openAsyncApplyAsset(item.id, 'cover-letter')} icon={Download}>
+            Cover letter
+          </Pill>
         )}
         {item.url && <Pill href={item.url} icon={ExternalLink} muted>Posting</Pill>}
         {item.company && (
@@ -195,16 +199,25 @@ function Reveal({ label, icon: Icon, count, variant, children }) {
   )
 }
 
-function Pill({ href, icon: Icon, children, muted }) {
+function Pill({ href, onOpen, icon: Icon, children, muted }) {
+  const className = `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors ${
+    muted ? 'text-stone-400 hover:bg-stone-50' : 'bg-sky-50/80 text-sky-700 hover:bg-sky-100'
+  }`
+
+  // onOpen: an authenticated asset, fetched by hand and opened as a blob URL
+  // (a plain <a href> can't carry the auth header the endpoint now needs).
+  // href: an ordinary external link, e.g. the original posting.
+  if (onOpen) {
+    return (
+      <button onClick={onOpen} className={className}>
+        <Icon size={12} />
+        {children}
+      </button>
+    )
+  }
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors ${
-        muted ? 'text-stone-400 hover:bg-stone-50' : 'bg-sky-50/80 text-sky-700 hover:bg-sky-100'
-      }`}
-    >
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
       <Icon size={12} />
       {children}
     </a>
