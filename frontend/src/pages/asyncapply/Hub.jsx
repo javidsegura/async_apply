@@ -5,7 +5,7 @@ import {
   Send, Database, BarChart3, SlidersHorizontal, ArrowUpRight,
   Sparkles, AlertTriangle, Target, Activity,
 } from 'lucide-react'
-import { getAsyncApplyBatches, getAsyncApplyItems } from '../../api.js'
+import { getAsyncApplyBatches, getAsyncApplyItems, getAsyncApplyMe } from '../../api.js'
 import { Panel, Stars, SectionHead } from './lib/ui.jsx'
 import { formatRelative, countryFlag, STATUS_META } from './lib/format.js'
 
@@ -23,12 +23,14 @@ const CARDS = [
 export default function Hub() {
   const [items, setItems] = useState([])
   const [batches, setBatches] = useState([])
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     Promise.all([getAsyncApplyItems(), getAsyncApplyBatches()]).then(([i, b]) => {
       setItems(i)
       setBatches(b)
     })
+    getAsyncApplyMe().then((me) => setIsAdmin(me.role === 'admin'))
   }, [])
 
   const stats = useMemo(() => {
@@ -57,11 +59,13 @@ export default function Hub() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <PulseStat label="Applications" value={stats.total} icon={Database} tint="from-sky-100 to-sky-50" />
         <PulseStat label="In play" value={stats.inPlay} icon={Target} tint="from-emerald-100 to-emerald-50" />
         <PulseStat label="Running now" value={stats.live} icon={Activity} tint="from-violet-100 to-violet-50" live={stats.live > 0} />
-        <PulseStat label="Total spend" value={`$${stats.spend.toFixed(3)}`} icon={Sparkles} tint="from-rose-100 to-rose-50" />
+        {isAdmin && (
+          <PulseStat label="Total spend" value={`$${stats.spend.toFixed(3)}`} icon={Sparkles} tint="from-rose-100 to-rose-50" />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">

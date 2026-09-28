@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, CheckCircle2, Star, DollarSign, Maximize2, X, Timer } from 'lucide-react'
-import { getAsyncApplyItems } from '../../api.js'
+import { getAsyncApplyItems, getAsyncApplyMe } from '../../api.js'
 import Sankey from './Sankey.jsx'
 import { Panel, Stat, Stars, SectionHead } from './lib/ui.jsx'
 import { duration, formatDateTime, parseUtc, countryFlag, STATUS_META } from './lib/format.js'
@@ -40,9 +40,11 @@ function mean(values) {
 export default function Metrics() {
   const [items, setItems] = useState([])
   const [span, setSpan] = useState('30')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     getAsyncApplyItems().then(setItems)
+    getAsyncApplyMe().then((me) => setIsAdmin(me.role === 'admin'))
   }, [])
 
   const scoped = useMemo(() => {
@@ -115,7 +117,7 @@ export default function Metrics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-3 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <Stat icon={Send} label="Submitted" value={stats.total} tint="from-sky-100 to-sky-50" />
         <Stat icon={CheckCircle2} label="In play" value={stats.applied} tint="from-emerald-100 to-emerald-50" />
         <Stat
@@ -130,23 +132,25 @@ export default function Metrics() {
           value={stats.avgRuntime != null ? `${Math.round(stats.avgRuntime)}s` : '—'}
           tint="from-violet-100 to-violet-50"
         />
-        <Stat
-          icon={DollarSign}
-          label="Spend"
-          value={`$${stats.totalCost.toFixed(3)}`}
-          sub={
-            stats.avgCost != null
-              ? `$${stats.avgCost.toFixed(4)} avg · ${stats.totalTokens.toLocaleString()} tokens`
-              : `${stats.totalTokens.toLocaleString()} tokens`
-          }
-          tint="from-rose-100 to-rose-50"
-        />
+        {isAdmin && (
+          <Stat
+            icon={DollarSign}
+            label="Spend"
+            value={`$${stats.totalCost.toFixed(3)}`}
+            sub={
+              stats.avgCost != null
+                ? `$${stats.avgCost.toFixed(4)} avg · ${stats.totalTokens.toLocaleString()} tokens`
+                : `${stats.totalTokens.toLocaleString()} tokens`
+            }
+            tint="from-rose-100 to-rose-50"
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel className="p-4">
-          <SectionHead title="Volume & cost" hint="Per ISO week" />
-          <WeeklyChart data={byWeek} />
+          <SectionHead title={isAdmin ? 'Volume & cost' : 'Volume'} hint="Per ISO week" />
+          <WeeklyChart data={byWeek} showCost={isAdmin} />
         </Panel>
         <Panel className="p-4">
           <SectionHead title="Where they stand" />
@@ -158,13 +162,13 @@ export default function Metrics() {
 
       <div>
         <SectionHead title="Raw data" hint="Every application in the window" />
-        <RawTable items={scoped} />
+        <RawTable items={scoped} showCost={isAdmin} />
       </div>
     </div>
   )
 }
 
-function WeeklyChart({ data }) {
+function WeeklyChart({ data, showCost }) {
   if (!data.length) return <p className="py-6 text-center text-xs text-stone-300">No data in this window.</p>
   const max = Math.max(1, ...data.map((d) => d.count))
 
@@ -182,7 +186,7 @@ function WeeklyChart({ data }) {
             />
           </div>
           <span className="w-7 text-right text-stone-500">{d.count}</span>
-          <span className="w-14 text-right text-stone-300">${d.cost.toFixed(3)}</span>
+          {showCost && <span className="w-14 text-right text-stone-300">${d.cost.toFixed(3)}</span>}
         </div>
       ))}
     </div>
@@ -217,7 +221,8 @@ function StatusChart({ data, total }) {
   )
 }
 
-function RawTable({ items }) {
+function RawTable({ items, showCost }) {
+  const colCount = showCost ? 8 : 6
   return (
     <Panel className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -230,8 +235,8 @@ function RawTable({ items }) {
               <th className="px-3 py-2 font-medium">Fit</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Runtime</th>
-              <th className="px-3 py-2 font-medium">Tokens</th>
-              <th className="px-3 py-2 font-medium">Cost</th>
+              {showCost && <th className="px-3 py-2 font-medium">Tokens</th>}
+              {showCost && <th className="px-3 py-2 font-medium">Cost</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
@@ -251,15 +256,19 @@ function RawTable({ items }) {
                   <td className="whitespace-nowrap px-3 py-2 text-stone-400">
                     {duration(item.started_at, item.ended_at) || '—'}
                   </td>
-                  <td className="px-3 py-2 text-stone-400">{item.total_tokens?.toLocaleString() ?? '—'}</td>
-                  <td className="px-3 py-2 text-stone-400">
-                    {item.cost_usd != null ? `$${item.cost_usd.toFixed(4)}` : '—'}
-                  </td>
+                  {showCost && (
+                    <td className="px-3 py-2 text-stone-400">{item.total_tokens?.toLocaleString() ?? '—'}</td>
+                  )}
+                  {showCost && (
+                    <td className="px-3 py-2 text-stone-400">
+                      {item.cost_usd != null ? `$${item.cost_usd.toFixed(4)}` : '—'}
+                    </td>
+                  )}
                 </tr>
               )
             })}
             {!items.length && (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-stone-300">Nothing in this window.</td></tr>
+              <tr><td colSpan={colCount} className="px-3 py-8 text-center text-stone-300">Nothing in this window.</td></tr>
             )}
           </tbody>
         </table>
