@@ -18,7 +18,7 @@ export default function AsyncApplyLayout() {
   const { user, signOutUser } = useAuth()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-6 py-6">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-3 py-5 sm:px-4">
       <nav className="mb-5 flex flex-wrap items-center gap-1 rounded-2xl border border-stone-200/60 bg-white/70 p-1 backdrop-blur-sm">
         {TABS.map((tab) => (
           <NavLink

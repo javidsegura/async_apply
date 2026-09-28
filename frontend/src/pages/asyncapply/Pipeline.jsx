@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Loader2, RotateCcw, Plus, X, Sparkles, Inbox } from 'lucide-react'
+import { Send, Loader2, RotateCcw, X, Sparkles, Inbox } from 'lucide-react'
 import {
   createAsyncApplyBatch, getAsyncApplyBatches, retryAsyncApplyBatch, updateAsyncApplyItem,
 } from '../../api.js'
@@ -95,19 +95,8 @@ export default function Pipeline() {
   }
 
   return (
-    <div className="space-y-4">
-      <Composer
-        draft={draft}
-        setDraft={setDraft}
-        pending={pending}
-        onAdd={addDraft}
-        onRemove={(i) => setPending((p) => p.filter((_, idx) => idx !== i))}
-        onSubmit={submit}
-        submitting={submitting}
-        error={error}
-      />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[210px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
+      <div className="min-w-0 space-y-4">
         <BatchRail batches={batches} selectedId={selectedId} onSelect={setSelectedId} />
         {selected ? (
           <BatchPanel
@@ -120,6 +109,19 @@ export default function Pipeline() {
           <Empty />
         )}
       </div>
+
+      <div className="xl:sticky xl:top-5">
+        <Composer
+          draft={draft}
+          setDraft={setDraft}
+          pending={pending}
+          onAdd={addDraft}
+          onRemove={(i) => setPending((p) => p.filter((_, idx) => idx !== i))}
+          onSubmit={submit}
+          submitting={submitting}
+          error={error}
+        />
+      </div>
     </div>
   )
 }
@@ -128,39 +130,30 @@ function Composer({ draft, setDraft, pending, onAdd, onRemove, onSubmit, submitt
   return (
     <Panel className="overflow-hidden">
       <div className="h-[3px] bg-gradient-to-r from-sky-200 via-violet-200 to-rose-200" />
-      <form onSubmit={onSubmit} className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[260px] flex-1">
-            <Plus size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-300" />
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  if (draft.trim()) onAdd(draft)
-                }
-              }}
-              onPaste={(e) => {
-                const text = e.clipboardData.getData('text')
-                if (text.includes('\n')) {
-                  e.preventDefault()
-                  onAdd(text)
-                }
-              }}
-              placeholder="Paste a job URL or description, press Enter"
-              className="w-full rounded-xl border border-stone-200/70 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-stone-300 focus:border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-100"
-            />
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={submitting || !pending.length}
-            className="flex items-center gap-2 rounded-xl bg-stone-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-opacity disabled:opacity-25"
-          >
-            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            {submitting ? 'Sending' : `Run ${pending.length || ''}`}
-          </motion.button>
+      <form onSubmit={onSubmit} className="space-y-3 p-4">
+        <div className="text-xs font-medium uppercase tracking-wide text-stone-400">Queue postings</div>
+
+        <div className="relative">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                if (draft.trim()) onAdd(draft)
+              }
+            }}
+            onPaste={(e) => {
+              const text = e.clipboardData.getData('text')
+              if (text.includes('\n')) {
+                e.preventDefault()
+                onAdd(text)
+              }
+            }}
+            rows={4}
+            placeholder="Paste a job URL or description. Enter to add, Shift+Enter for a new line."
+            className="w-full resize-none rounded-xl border border-stone-200/70 bg-white p-3 text-sm placeholder:text-stone-300 focus:border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          />
         </div>
 
         <AnimatePresence initial={false}>
@@ -171,16 +164,16 @@ function Composer({ draft, setDraft, pending, onAdd, onRemove, onSubmit, submitt
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="flex flex-wrap gap-1.5 pt-2.5">
+              <div className="flex flex-col gap-1.5">
                 {pending.map((item, i) => (
-                  <motion.span
+                  <motion.div
                     key={`${item}-${i}`}
                     layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex max-w-[280px] items-center gap-1.5 rounded-full bg-sky-50/80 py-1 pl-3 pr-1.5 text-[11px] text-sky-700"
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-1.5 rounded-lg bg-sky-50/80 py-1.5 pl-2.5 pr-1.5 text-[11px] text-sky-700"
                   >
-                    <span className="truncate">{item}</span>
+                    <span className="min-w-0 flex-1 truncate">{item}</span>
                     <button
                       type="button"
                       onClick={() => onRemove(i)}
@@ -188,16 +181,26 @@ function Composer({ draft, setDraft, pending, onAdd, onRemove, onSubmit, submitt
                     >
                       <X size={10} />
                     </button>
-                  </motion.span>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {error && <p className="pt-2 text-xs text-rose-600">{error}</p>}
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          type="submit"
+          disabled={submitting || !pending.length}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-stone-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-opacity disabled:opacity-25"
+        >
+          {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          {submitting ? 'Sending' : `Run ${pending.length || ''}`}
+        </motion.button>
+
+        {error && <p className="text-xs text-rose-600">{error}</p>}
         {!pending.length && !error && (
-          <p className="flex items-center gap-1.5 pt-2 text-[11px] text-stone-300">
+          <p className="flex items-center gap-1.5 text-[11px] text-stone-300">
             <Sparkles size={11} /> Paste several lines at once to queue a whole batch.
           </p>
         )}
@@ -212,7 +215,7 @@ function BatchRail({ batches, selectedId, onSelect }) {
       <div className="mb-2 px-1 text-[10px] font-medium uppercase tracking-wide text-stone-400">
         Runs
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 lg:max-h-[600px] lg:flex-col lg:overflow-y-auto lg:pr-1">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {batches.map((batch) => {
           const live = ACTIVE.has(batch.state)
           const failed = batch.items.filter((i) => i.state === 'failed').length
@@ -221,7 +224,7 @@ function BatchRail({ batches, selectedId, onSelect }) {
             <button
               key={batch.id}
               onClick={() => onSelect(batch.id)}
-              className={`min-w-[150px] shrink-0 rounded-xl border px-3 py-2 text-left transition-all lg:min-w-0 ${
+              className={`min-w-[170px] shrink-0 rounded-xl border px-3 py-2 text-left transition-all ${
                 selectedId === batch.id
                   ? 'border-stone-300 bg-white shadow-sm'
                   : 'border-transparent bg-white/50 hover:bg-white'
@@ -289,7 +292,7 @@ function BatchPanel({ batch, onRetry, onStatusChange }) {
         </div>
       </Panel>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
         {batch.items.map((item) => (
           <ItemCard key={item.id} item={item} onStatusChange={onStatusChange} />
         ))}

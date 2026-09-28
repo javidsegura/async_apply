@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Sparkles, Plus, X, Loader2 } from 'lucide-react'
 import { getAsyncApplyProfile, updateAsyncApplyProfile, fillAsyncApplyProfileFromCv } from '../../api.js'
+import { COUNTRIES, COUNTRY_BY_CODE } from './lib/countries.js'
 
 const EMPTY_ENTRY = { heading: '', location: '', subheading: '', dates: '', bullets: [], text: null }
 
@@ -106,11 +107,10 @@ export default function ProfileForm() {
 
       <Section title="Job search targeting" hint="Not on any CV -- only you know this.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <ChipField
-            label="Authorized to work in (country codes)"
+          <CountryField
+            label="Authorized to work in"
             values={profile.location.authorized_in}
             onChange={(v) => set('location.authorized_in', v)}
-            placeholder="ES, EU..."
           />
           <ChipField
             label="Target roles"
@@ -278,6 +278,71 @@ function ChipField({ label, values, onChange, placeholder }) {
           className="min-w-[6rem] flex-1 border-none px-1 py-0.5 text-sm outline-none"
         />
       </div>
+    </div>
+  )
+}
+
+function CountryField({ label, values, onChange }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const matches = query.trim()
+    ? COUNTRIES.filter(
+        (c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) && !values.includes(c.code),
+      ).slice(0, 8)
+    : []
+
+  function add(code) {
+    if (!values.includes(code)) onChange([...values, code])
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div ref={boxRef} className="relative">
+      <label className="mb-1 block text-xs font-medium text-stone-600">{label}</label>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-stone-200/70 bg-white px-2 py-1.5">
+        {values.map((code) => (
+          <span key={code} className="flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
+            {COUNTRY_BY_CODE[code] || code}
+            <button onClick={() => onChange(values.filter((x) => x !== code))}>
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Type a country name..."
+          className="min-w-[8rem] flex-1 border-none px-1 py-0.5 text-sm outline-none"
+        />
+      </div>
+      {open && matches.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-stone-200/70 bg-white shadow-lg">
+          {matches.map((c) => (
+            <button
+              key={c.code}
+              onClick={() => add(c.code)}
+              className="block w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-sky-50"
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
