@@ -1,0 +1,61 @@
+<style>
+  @page { size: letter; margin: 0.5in 0.6in; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: {{BASE_FONT_SIZE}}pt;
+    line-height: {{LINE_HEIGHT}};
+    color: #000;
+    margin: 0;
+  }
+  a { color: #0000cc; }
+  .name { text-align: center; font-size: 17pt; font-weight: bold; margin: 0 0 2pt; }
+  .contact { text-align: center; font-size: 10pt; margin: 0; }
+  .permits { text-align: center; font-size: 10pt; margin: 0 0 4pt; }
+
+  h2 {
+    font-size: 11pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 1px solid #000;
+    margin: 9pt 0 3pt;
+    padding-bottom: 1pt;
+  }
+
+  /* Each entry: name left, location right; title left, dates right. */
+  .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .row .left { font-weight: bold; }
+  .row .right { font-weight: bold; white-space: nowrap; padding-left: 10pt; }
+  .row.sub .left { font-weight: normal; font-style: italic; }
+  .row.sub .right { font-weight: normal; font-style: italic; }
+
+  ul { margin: 1pt 0 4pt; padding-left: 16pt; }
+  li { margin: 0 0 1pt; text-align: justify; }
+  p.entry { margin: 0 0 3pt; text-align: justify; }
+  .additional { margin: 1pt 0 0; padding-left: 16pt; }
+</style>
+
+<p class="name">{{NAME}}</p>
+<p class="contact">{{LOCATION}}</p>
+<p class="contact">{{CONTACT_LINE}}</p>
+<p class="permits">{{WORK_PERMITS}}</p>
+
+<h2>Education Background</h2>
+{{EDUCATION}}
+
+<h2>Professional Experience</h2>
+{{EXPERIENCE}}
+
+<h2>Projects</h2>
+{{PROJECTS}}
+
+<h2>Awards &amp; Honors</h2>
+{{AWARDS}}
+
+<h2>Activities &amp; Leadership</h2>
+{{ACTIVITIES}}
+
+<h2>Additional Information</h2>
+<ul class="additional">
+  <li><b>Languages:</b> {{LANGUAGES}}</li>
+  <li><b>Technologies &amp; Tools:</b> {{TECHNOLOGIES}}</li>
+</ul>

@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=asyncapply
+      - POSTGRES_USER=asyncapply
+      - POSTGRES_PASSWORD=asyncapply
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      # The backend runs migrations on start, so it must not start until
+      # Postgres is actually accepting connections.
+      test: ["CMD-SHELL", "pg_isready -U asyncapply -d asyncapply"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    # Chromium cannot run under QEMU, so the image must match the host CPU.
+    # Pinned because DOCKER_DEFAULT_PLATFORM=linux/amd64 in a shell profile
+    # silently produces an x86 image here and every PDF render then fails.
+    # Change to linux/amd64 when deploying to an x86 host.
+    platform: linux/arm64
+    ports:
+      - "8000:8000"
+    volumes:
+      # Generated CV/cover-letter PDFs live on disk (the DB stores their paths),
+      # so they need a volume to survive a rebuild.
+      - asyncapply-output:/data/asyncapply-output
+      # Profile, agent DNA and stage prompts, mounted read-write rather than
+      # copied into the image: PII never ends up in a pushed layer, and the
+      # Config UI's edits land on disk instead of the container's throwaway
+      # layer, so they survive a rebuild.
+      - ./backend/services/asyncapply/context:/app/services/asyncapply/context
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://asyncapply:asyncapply@db:5432/asyncapply
+      - ASYNCAPPLY_OUTPUT_DIR=/data/asyncapply-output
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pg-data:
+    name: asyncapply_pg-data
+  asyncapply-output:

@@ -1,0 +1,46 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "alembic>=1.20.0",
+    "anyio>=4.14.2",
+    "ddgs>=9.16.0",
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "openai>=3.18.0",
+    "playwright>=1.62.0",
+    "psycopg[binary]>=3.3.6",
+    "pydantic>=2.13.4",
+    "pytest>=9.1.1",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "pyyaml>=6.0.3",
+    "sqlalchemy>=2.0.51",
+    "uvicorn>=0.52.1",
+]
+
+[tool.ruff]
+line-length = 110
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "SIM", "UP", "RUF"]
+ignore = [
+    # FastAPI's whole dependency system is Depends() in a default argument.
+    "B008",
+    # Deliberate task boundaries: the batch worker and the tool wrappers catch
+    # everything so one bad item cannot take down the run.
+    "BLE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The unicode table exists precisely to map these characters to ASCII.
+"services/careers/utils/documents/html.py" = ["RUF001"]
+# The ATS-normalization test feeds in the very characters being normalized.
+"tests/test_careers_documents.py" = ["RUF001"]
+# Tests assert on exact schedules, where a fixed "today" is the point.
+"tests/*" = ["DTZ011"]

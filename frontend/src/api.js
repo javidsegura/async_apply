@@ -1,0 +1,133 @@
+/**
+ * Thin fetch wrapper around the AsyncApply REST API.
+ */
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
+/**
+ * Build a query string from a params object, skipping null/undefined/empty values.
+ *
+ * @param {Object} params - Key/value pairs to serialize.
+ * @returns {string} A leading-? query string, or empty string if no params.
+ */
+function toQueryString(params) {
+  if (!params) return ''
+  const entries = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== '',
+  )
+  if (entries.length === 0) return ''
+  const search = new URLSearchParams()
+  for (const [key, value] of entries) search.append(key, value)
+  return `?${search.toString()}`
+}
+
+/**
+ * Perform a fetch against the API and parse the JSON response.
+ *
+ * @param {string} path - Path relative to the API base URL.
+ * @param {RequestInit} [options] - Fetch options.
+ * @returns {Promise<any>} The parsed JSON body, or null for 204 responses.
+ */
+async function request(path, options = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`API error ${res.status} on ${path}: ${text}`)
+  }
+  if (res.status === 204) return null
+  return res.json()
+}
+
+// --- AsyncApply ---
+
+export function createAsyncApplyBatch(items) {
+  return request('/asyncapply/batches', { method: 'POST', body: JSON.stringify({ items }) })
+}
+
+export function getAsyncApplyBatches() {
+  return request('/asyncapply/batches')
+}
+
+export function getAsyncApplyBatch(id) {
+  return request(`/asyncapply/batches/${id}`)
+}
+
+export function retryAsyncApplyBatch(id) {
+  return request(`/asyncapply/batches/${id}/retry`, { method: 'POST' })
+}
+
+export function getAsyncApplyItems(params) {
+  return request(`/asyncapply/items${toQueryString(params)}`)
+}
+
+export function updateAsyncApplyItem(id, payload) {
+  return request(`/asyncapply/items/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export function deleteAsyncApplyItem(id) {
+  return request(`/asyncapply/items/${id}`, { method: 'DELETE' })
+}
+
+export function asyncApplyAssetUrl(itemId, asset) {
+  return `${BASE_URL}/asyncapply/items/${itemId}/${asset}`
+}
+
+export function asyncApplyLogoUrl(company) {
+  return `${BASE_URL}/asyncapply/companies/${encodeURIComponent(company)}/logo`
+}
+
+export async function uploadAsyncApplyLogo(company, file) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE_URL}/asyncapply/companies/${encodeURIComponent(company)}/logo`, {
+    method: 'PUT',
+    body: form,
+  })
+  if (!res.ok) throw new Error(`API error ${res.status} uploading logo`)
+  return res.json()
+}
+
+// --- AsyncApply config ---
+
+export function getAsyncApplyProfile() {
+  return request('/asyncapply/config/profile')
+}
+
+export function updateAsyncApplyProfile(content) {
+  return request('/asyncapply/config/profile', { method: 'PUT', body: JSON.stringify({ content }) })
+}
+
+export function getAsyncApplyVoiceDna() {
+  return request('/asyncapply/config/voice-dna')
+}
+
+export function updateAsyncApplyVoiceDna(content) {
+  return request('/asyncapply/config/voice-dna', { method: 'PUT', body: JSON.stringify({ content }) })
+}
+
+export function getAsyncApplyModes() {
+  return request('/asyncapply/config/modes')
+}
+
+export function getAsyncApplyMode(name) {
+  return request(`/asyncapply/config/modes/${name}`)
+}
+
+export function updateAsyncApplyMode(name, content) {
+  return request(`/asyncapply/config/modes/${name}`, { method: 'PUT', body: JSON.stringify({ content }) })
+}
+
+export function getAsyncApplySettings() {
+  return request('/asyncapply/config/settings')
+}
+
+export function updateAsyncApplySettings(settings) {
+  return request('/asyncapply/config/settings', { method: 'PUT', body: JSON.stringify(settings) })
+}
+
+export function getAsyncApplyAvailableModels() {
+  return request('/asyncapply/config/available-models')
+}

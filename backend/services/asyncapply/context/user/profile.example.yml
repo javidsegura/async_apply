@@ -1,0 +1,58 @@
+# Copy to profile.yml and fill in. profile.yml is gitignored: it is your data.
+#
+# Everything here is a FACT about you and is placed on the CV as written. The
+# model never rewrites this section; it only reorders your jobs and projects
+# and rewords their bullets to suit each posting.
+
+candidate:
+  full_name: Ada Lovelace
+  location: Madrid, Spain
+  phone: "(+34) 600 000 000"
+  email: ada@example.com
+  linkedin: https://www.linkedin.com/in/ada
+  github: https://github.com/ada
+  portfolio_url: https://ada.dev
+
+# Optional. Free-text rules that disqualify a job outright.
+custom_house_rules: |
+  No crypto or gambling companies.
+  No unpaid roles.
+
+location:
+  authorized_in: [ES, EU]
+  needs_sponsorship: false
+
+target_roles:
+  - Backend Engineer
+  - Platform Engineer
+
+# The fixed parts of the CV, rendered exactly as written here.
+cv:
+  work_permits: "Work authorization: EU | Eligible to sign an internship agreement via IE University"
+  languages: "Spanish (Native). English (Fluent). German (basic)."
+
+  # Canonical list. The model reorders these to lead with what a posting names,
+  # and is not allowed to add to them.
+  technologies: [Python, SQL, Kubernetes, Terraform, Docker, AWS, CI/CD]
+
+  education:
+    - heading: IE University
+      location: Madrid, Spain
+      subheading: BSc in Computer Science & Artificial Intelligence
+      dates: "Expected: July 2027"
+      bullets:
+        - "GPA: 93/100, Dean's List; top 5% of the class."
+
+  awards:
+    - heading: EduCaixa The Challenge
+      text: Finalist in an international research competition (<0.02% acceptance).
+    - heading: IE Entrepreneurship Award
+      text: Merit-based scholarship for outstanding entrepreneurial potential.
+
+  activities:
+    - heading: IE Student Government
+      location: Madrid, Spain
+      subheading: Class representative
+      dates: September 2023 - Present
+      bullets:
+        - Drove curriculum adjustments by presenting data-backed proposals to stakeholders.

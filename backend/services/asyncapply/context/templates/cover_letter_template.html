@@ -1,0 +1,35 @@
+<style>
+  @page { size: letter; margin: 0.9in 1in; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #000;
+    margin: 0;
+  }
+  a { color: #0000cc; }
+  .name { font-size: 15pt; font-weight: bold; margin: 0; }
+  .contact { font-size: 10pt; margin: 0 0 18pt; }
+  .to { margin: 0 0 14pt; }
+  .to div { margin: 0; }
+  .date { margin: 0 0 14pt; }
+  .greeting { margin: 0 0 10pt; }
+  .body p { margin: 0 0 9pt; text-align: justify; }
+  .signoff { margin: 12pt 0 0; }
+</style>
+
+<p class="name">{{NAME}}</p>
+<p class="contact">{{CONTACT_LINE}}</p>
+
+<p class="date">{{DATE}}</p>
+
+<div class="to">
+  <div>{{COMPANY}}</div>
+  <div>Re: {{ROLE_TITLE}}</div>
+</div>
+
+<p class="greeting">Dear Hiring Team,</p>
+
+<div class="body">{{BODY}}</div>
+
+<p class="signoff">Sincerely,<br>{{NAME}}</p>

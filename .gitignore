@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+
+node_modules/
+dist/
+.env
+.DS_Store
+
+# the candidate's own context — PII, never committed (the example is not)
+backend/services/asyncapply/context/user/*
+!backend/services/asyncapply/context/user/*.example.yml
+
+# generated PDFs
+backend/services/asyncapply/output/
