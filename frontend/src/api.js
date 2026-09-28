@@ -215,3 +215,24 @@ export function updateAsyncApplySettings(settings) {
 export function getAsyncApplyAvailableModels() {
   return request('/asyncapply/config/available-models')
 }
+
+// --- AsyncApply admin ---
+
+export function getAsyncApplyAdminUsers() {
+  return request('/asyncapply/admin/users')
+}
+
+export function getAsyncApplyAdminUserDetail(id) {
+  return request(`/asyncapply/admin/users/${id}/detail`)
+}
+
+export function updateAsyncApplyAdminBudget(id, tokenBudgetUsd) {
+  return request(`/asyncapply/admin/users/${id}/budget`, {
+    method: 'PATCH',
+    body: JSON.stringify({ token_budget_usd: tokenBudgetUsd }),
+  })
+}
+
+export function getAsyncApplyAdminStats(window) {
+  return request(`/asyncapply/admin/stats${toQueryString({ window })}`)
+}

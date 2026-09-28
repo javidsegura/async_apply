@@ -27,19 +27,59 @@ router = APIRouter(prefix="/asyncapply", tags=["asyncapply"])
 
 class MeRead(BaseModel):
     """What the frontend needs to know about who's signed in: role (to show
-    or hide admin-only UI) and budget (to show remaining debug/usage room)."""
+    or hide admin-only UI), budget (to show remaining debug/usage room), and
+    whether the one-time onboarding screen still needs to be shown."""
 
     email: str
     role: str
     token_budget_usd: float
     spent_usd: float
+    onboarding_completed: bool
 
     model_config = {"from_attributes": True}
 
 
+class OnboardingUpdate(BaseModel):
+    """Profiling fields captured on the one-time onboarding screen.
+
+    Every field is optional -- the point of this call is "the screen was
+    seen," not "every question was answered." Skipping is a valid outcome.
+    """
+
+    school: str | None = None
+    grad_year: int | None = None
+    field_of_study: str | None = None
+    target_roles: str | None = None
+    referral_source: str | None = None
+
+
 @router.get("/me", response_model=MeRead)
 def get_me(user: models.User = Depends(get_current_user)) -> models.User:
-    """Return the signed-in user's own role and budget."""
+    """Return the signed-in user's own role, budget and onboarding status."""
+    return user
+
+
+@router.patch("/me/onboarding", response_model=MeRead)
+def complete_onboarding(
+    payload: OnboardingUpdate,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+) -> models.User:
+    """Save whichever profiling fields were given and mark onboarding done.
+
+    Args:
+        payload: Whatever the user filled in -- any subset, including none.
+        db: Active database session.
+        user: The authenticated caller.
+
+    Returns:
+        models.User: The updated user.
+    """
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    user.onboarding_completed = True
+    db.commit()
+    db.refresh(user)
     return user
 
 _ASSETS = {"cv": "cv_pdf_path", "cover-letter": "cover_letter_pdf_path"}

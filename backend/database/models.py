@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.database import Base
@@ -45,6 +45,10 @@ class User(Base):
     field_of_study: Mapped[str | None] = mapped_column(String, nullable=True)
     target_roles: Mapped[str | None] = mapped_column(String, nullable=True)
     referral_source: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # False until the user has seen (and dismissed or filled in) the
+    # one-time profiling screen right after their first login.
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 

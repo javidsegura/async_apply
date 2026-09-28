@@ -1,13 +1,16 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutGrid, Send, Database, BarChart3, SlidersHorizontal, LogOut } from 'lucide-react'
+import { LayoutGrid, Send, Database, BarChart3, SlidersHorizontal, LogOut, Crown } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider.jsx'
+import { getAsyncApplyMe } from '../../api.js'
 
 const TABS = [
-  { to: '/', label: 'Hub', icon: LayoutGrid, end: true },
-  { to: '/apply', label: 'Apply', icon: Send },
-  { to: '/history', label: 'Applications', icon: Database },
-  { to: '/metrics', label: 'Metrics', icon: BarChart3 },
-  { to: '/config', label: 'Config', icon: SlidersHorizontal },
+  { to: '/', label: 'Hub', icon: LayoutGrid, end: true, adminOnly: false },
+  { to: '/apply', label: 'Apply', icon: Send, adminOnly: false },
+  { to: '/history', label: 'Applications', icon: Database, adminOnly: false },
+  { to: '/metrics', label: 'Metrics', icon: BarChart3, adminOnly: false },
+  { to: '/config', label: 'Config', icon: SlidersHorizontal, adminOnly: false },
+  { to: '/admin', label: 'Admin', icon: Crown, adminOnly: true },
 ]
 
 /**
@@ -16,11 +19,18 @@ const TABS = [
  */
 export default function AsyncApplyLayout() {
   const { user, signOutUser } = useAuth()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    getAsyncApplyMe().then((me) => setIsAdmin(me.role === 'admin'))
+  }, [])
+
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-3 py-5 sm:px-4">
       <nav className="mb-5 flex flex-wrap items-center gap-1 rounded-2xl border border-stone-200/60 bg-white/70 p-1 backdrop-blur-sm">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}

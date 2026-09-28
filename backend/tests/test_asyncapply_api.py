@@ -293,3 +293,30 @@ def test_me_returns_role_and_budget(client: TestClient, make_user) -> None:
     body = res.json()
     assert body["role"] == "admin"
     assert body["token_budget_usd"] == 50.0
+
+
+def test_a_fresh_user_has_not_completed_onboarding(client: TestClient, make_user) -> None:
+    make_user()
+    res = client.get("/api/v1/asyncapply/me")
+    assert res.json()["onboarding_completed"] is False
+
+
+def test_onboarding_saves_given_fields_and_marks_complete(client: TestClient, make_user) -> None:
+    make_user()
+    res = client.patch(
+        "/api/v1/asyncapply/me/onboarding",
+        json={"school": "IE University", "grad_year": 2027, "referral_source": "Friend"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["onboarding_completed"] is True
+
+    again = client.get("/api/v1/asyncapply/me").json()
+    assert again["onboarding_completed"] is True
+
+
+def test_onboarding_can_be_skipped_with_no_fields(client: TestClient, make_user) -> None:
+    make_user()
+    res = client.patch("/api/v1/asyncapply/me/onboarding", json={})
+    assert res.status_code == 200
+    assert res.json()["onboarding_completed"] is True
