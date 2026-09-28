@@ -17,7 +17,7 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch):
 
 def test_a_fresh_row_is_seeded_with_the_defaults() -> None:
     settings = get_settings()
-    assert settings.models["evaluate_job"] == "deepseek/deepseek-v3.2"
+    assert settings.models["evaluate_job"] == "google/gemini-2.5-flash"
     assert settings.parallelism == 2
 
 
