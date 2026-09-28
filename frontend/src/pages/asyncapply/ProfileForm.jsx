@@ -1,18 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Plus, X, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, X, Loader2, ChevronDown } from 'lucide-react'
 import { getAsyncApplyProfile, updateAsyncApplyProfile, fillAsyncApplyProfileFromCv } from '../../api.js'
-import { COUNTRIES, COUNTRY_BY_CODE } from './lib/countries.js'
+import { COUNTRIES, COUNTRY_BY_CODE, DIAL_CODES } from './lib/countries.js'
 
 const EMPTY_ENTRY = { heading: '', location: '', subheading: '', dates: '', bullets: [], text: null }
 
 const CV_SECTIONS = [
-  { key: 'education', label: 'Education', mode: 'bullets' },
-  { key: 'experience', label: 'Experience', mode: 'bullets' },
-  { key: 'projects', label: 'Projects', mode: 'bullets' },
-  { key: 'awards', label: 'Awards', mode: 'text' },
-  { key: 'activities', label: 'Activities', mode: 'bullets' },
+  { key: 'education', label: 'Education', emoji: '🎓', mode: 'bullets', dateField: 'education' },
+  { key: 'experience', label: 'Experience', emoji: '💼', mode: 'bullets' },
+  { key: 'projects', label: 'Projects', emoji: '🚀', mode: 'bullets' },
+  { key: 'awards', label: 'Awards', emoji: '🏆', mode: 'text' },
+  { key: 'activities', label: 'Activities', emoji: '🤝', mode: 'bullets' },
 ]
+
+const SUGGESTED_ROLES = [
+  'Software Engineer', 'Backend Engineer', 'Frontend Engineer', 'Full Stack Engineer',
+  'Data Scientist', 'Machine Learning Engineer', 'DevOps Engineer', 'Product Manager',
+  'Data Engineer', 'Platform Engineer',
+]
+
+const SUGGESTED_TECHNOLOGIES = [
+  'Python', 'JavaScript', 'TypeScript', 'React', 'SQL', 'Java', 'Docker', 'AWS', 'Git', 'Linux',
+]
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+const CURRENT_YEAR = new Date().getFullYear()
+const YEARS = Array.from({ length: 20 }, (_, i) => CURRENT_YEAR + 6 - i)
 
 /**
  * The candidate's whole profile as a real form: identity, job-search
@@ -79,7 +96,7 @@ export default function ProfileForm() {
     <div className="space-y-4">
       <div className="flex items-center justify-between rounded-2xl border border-sky-200/60 bg-sky-50/50 px-5 py-3.5">
         <div>
-          <h3 className="text-sm font-medium text-stone-800">Fill in as little as possible</h3>
+          <h3 className="text-sm font-medium text-stone-800">🪄 Fill in as little as possible</h3>
           <p className="text-xs text-stone-500">Upload your CV and AI does its best. You review and fill in the rest.</p>
         </div>
         <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleCvUpload} />
@@ -93,19 +110,19 @@ export default function ProfileForm() {
         </button>
       </div>
 
-      <Section title="Identity">
+      <Section title="Identity" emoji="🪪">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Full name" required value={profile.candidate.full_name} onChange={(v) => set('candidate.full_name', v)} />
+          <Field label="Full name" required value={profile.candidate.full_name} onChange={(v) => set('candidate.full_name', v)} placeholder="Ada Lovelace" />
           <Field label="Location" value={profile.candidate.location} onChange={(v) => set('candidate.location', v)} placeholder="Madrid, Spain" />
-          <Field label="Phone" value={profile.candidate.phone} onChange={(v) => set('candidate.phone', v)} />
-          <Field label="Email" value={profile.candidate.email} onChange={(v) => set('candidate.email', v)} />
-          <Field label="LinkedIn" value={profile.candidate.linkedin} onChange={(v) => set('candidate.linkedin', v)} />
-          <Field label="GitHub" value={profile.candidate.github} onChange={(v) => set('candidate.github', v)} />
-          <Field label="Portfolio" value={profile.candidate.portfolio_url} onChange={(v) => set('candidate.portfolio_url', v)} />
+          <PhoneField value={profile.candidate.phone} onChange={(v) => set('candidate.phone', v)} />
+          <Field label="Email" value={profile.candidate.email} onChange={(v) => set('candidate.email', v)} placeholder="ada@example.com" />
+          <Field label="LinkedIn" value={profile.candidate.linkedin} onChange={(v) => set('candidate.linkedin', v)} placeholder="linkedin.com/in/ada" />
+          <Field label="GitHub" value={profile.candidate.github} onChange={(v) => set('candidate.github', v)} placeholder="github.com/ada" />
+          <Field label="Portfolio" value={profile.candidate.portfolio_url} onChange={(v) => set('candidate.portfolio_url', v)} placeholder="ada.dev" />
         </div>
       </Section>
 
-      <Section title="Job search targeting" hint="Not on any CV -- only you know this.">
+      <Section title="Job search targeting" emoji="🎯" hint="Not on any CV -- only you know this.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CountryField
             label="Authorized to work in"
@@ -116,54 +133,54 @@ export default function ProfileForm() {
             label="Target roles"
             values={profile.target_roles}
             onChange={(v) => set('target_roles', v)}
-            placeholder="Backend Engineer..."
+            placeholder="Type your own..."
+            suggestions={SUGGESTED_ROLES}
           />
         </div>
-        <label className="mt-3 flex items-center gap-2 text-xs text-stone-600">
-          <input
-            type="checkbox"
-            checked={profile.location.needs_sponsorship}
-            onChange={(e) => set('location.needs_sponsorship', e.target.checked)}
-            className="rounded border-stone-300"
-          />
-          Would need visa sponsorship outside those countries
-        </label>
         <Field
-          label="Anything else for the CV's work-authorization line"
+          label="Anything else for the CV's work-authorization line (optional)"
           value={profile.location.work_auth_note}
           onChange={(v) => set('location.work_auth_note', v)}
           placeholder="e.g. Eligible to sign an internship agreement via IE University"
           className="mt-3"
         />
         <Field
-          label="House rules (optional)"
+          label="House rules (optional) -- write your own, in your own words"
           value={profile.custom_house_rules}
           onChange={(v) => set('custom_house_rules', v)}
-          placeholder="No crypto or gambling companies."
+          placeholder="e.g. No crypto or gambling companies. Nothing fully remote. Skip agencies."
           textarea
           className="mt-3"
         />
       </Section>
 
-      <Section title="CV content">
+      <Section title="CV content" emoji="📝">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Languages" value={profile.cv.languages} onChange={(v) => set('cv.languages', v)} placeholder="Spanish (Native). English (Fluent)." />
-          <ChipField label="Technologies" values={profile.cv.technologies} onChange={(v) => set('cv.technologies', v)} placeholder="Python, SQL..." />
+          <ChipField
+            label="Technologies"
+            values={profile.cv.technologies}
+            onChange={(v) => set('cv.technologies', v)}
+            placeholder="Type your own..."
+            suggestions={SUGGESTED_TECHNOLOGIES}
+          />
         </div>
         <Field
-          label="Summary (optional, used only for outreach)"
+          label="Summary (optional, used only for outreach) -- write it in your own words"
           value={profile.cv.summary}
           onChange={(v) => set('cv.summary', v)}
+          placeholder="e.g. CS student who builds fast, well-tested backend systems and ships them."
           textarea
           className="mt-3"
         />
       </Section>
 
-      {CV_SECTIONS.map(({ key, label, mode }) => (
-        <Section key={key} title={label}>
+      {CV_SECTIONS.map(({ key, label, emoji, mode, dateField }) => (
+        <Section key={key} title={label} emoji={emoji}>
           <EntryList
             entries={profile.cv[key]}
             mode={mode}
+            dateField={dateField}
             onChange={(entries) => set(`cv.${key}`, entries)}
           />
         </Section>
@@ -212,11 +229,14 @@ function mergeExtraction(profile, extracted) {
   return next
 }
 
-function Section({ title, hint, children }) {
+function Section({ title, emoji, hint, children }) {
   return (
     <div className="rounded-2xl border border-stone-200/70 bg-white/80 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <div className="mb-3 flex items-baseline gap-2">
-        <h3 className="font-medium text-stone-800">{title}</h3>
+        <h3 className="font-medium text-stone-800">
+          {emoji && <span className="mr-1.5">{emoji}</span>}
+          {title}
+        </h3>
         {hint && <span className="text-[11px] text-stone-400">{hint}</span>}
       </div>
       {children}
@@ -237,20 +257,22 @@ function Field({ label, value, onChange, placeholder, required, textarea, classN
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={textarea ? 3 : undefined}
-        className="w-full rounded-xl border border-stone-200/70 bg-white px-2.5 py-1.5 text-sm focus:border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-100"
+        className="w-full rounded-xl border border-stone-200/70 bg-white px-2.5 py-1.5 text-sm placeholder:text-stone-300 focus:border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-100"
       />
     </div>
   )
 }
 
-function ChipField({ label, values, onChange, placeholder }) {
+function ChipField({ label, values, onChange, placeholder, suggestions = [] }) {
   const [draft, setDraft] = useState('')
 
-  function commit() {
-    const v = draft.trim()
+  function commit(value) {
+    const v = (value ?? draft).trim()
     if (v && !values.includes(v)) onChange([...values, v])
     setDraft('')
   }
+
+  const availableSuggestions = suggestions.filter((s) => !values.includes(s))
 
   return (
     <div>
@@ -273,11 +295,24 @@ function ChipField({ label, values, onChange, placeholder }) {
               commit()
             }
           }}
-          onBlur={commit}
+          onBlur={() => commit()}
           placeholder={placeholder}
-          className="min-w-[6rem] flex-1 border-none px-1 py-0.5 text-sm outline-none"
+          className="min-w-[6rem] flex-1 border-none px-1 py-0.5 text-sm placeholder:text-stone-300 outline-none"
         />
       </div>
+      {availableSuggestions.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {availableSuggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => commit(s)}
+              className="flex items-center gap-0.5 rounded-full border border-dashed border-stone-200 px-2 py-0.5 text-[10px] text-stone-400 hover:border-sky-300 hover:text-sky-600"
+            >
+              <Plus size={9} /> {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -327,7 +362,7 @@ function CountryField({ label, values, onChange }) {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Type a country name..."
-          className="min-w-[8rem] flex-1 border-none px-1 py-0.5 text-sm outline-none"
+          className="min-w-[8rem] flex-1 border-none px-1 py-0.5 text-sm placeholder:text-stone-300 outline-none"
         />
       </div>
       {open && matches.length > 0 && (
@@ -347,7 +382,148 @@ function CountryField({ label, values, onChange }) {
   )
 }
 
-function EntryList({ entries, mode, onChange }) {
+/**
+ * A phone number as a dial-code picker (type-ahead by country name, same
+ * pattern as CountryField) plus the local number -- combined into one
+ * "+34 608 362 377" string for storage, so the schema stays a single string.
+ */
+function PhoneField({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const boxRef = useRef(null)
+
+  const dial = DIAL_CODES.find((d) => value?.startsWith(d.dial))?.dial || ''
+  const rest = dial ? value.slice(dial.length).trim() : (value || '')
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const matches = DIAL_CODES.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+
+  function pickDial(newDial) {
+    onChange(`${newDial} ${rest}`.trim())
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-stone-600">Phone</label>
+      <div className="flex gap-1.5">
+        <div ref={boxRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-full items-center gap-1 rounded-xl border border-stone-200/70 bg-white px-2.5 py-1.5 text-sm text-stone-600 hover:border-stone-300"
+          >
+            {dial || 'Code'} <ChevronDown size={12} className="text-stone-400" />
+          </button>
+          {open && (
+            <div className="absolute z-10 mt-1 w-56 overflow-hidden rounded-xl border border-stone-200/70 bg-white shadow-lg">
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search country..."
+                className="w-full border-b border-stone-100 px-3 py-1.5 text-sm placeholder:text-stone-300 outline-none"
+              />
+              <div className="max-h-48 overflow-y-auto">
+                {matches.map((c) => (
+                  <button
+                    key={c.code}
+                    onClick={() => pickDial(c.dial)}
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-sky-50"
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-stone-400">{c.dial}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <input
+          value={rest}
+          onChange={(e) => onChange(`${dial} ${e.target.value}`.trim())}
+          placeholder="608 362 377"
+          className="w-full min-w-0 flex-1 rounded-xl border border-stone-200/70 bg-white px-2.5 py-1.5 text-sm placeholder:text-stone-300 focus:border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-100"
+        />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Parse an education `dates` string back into {status, month, year} so the
+ * toggle+dropdowns reflect whatever was already there (typed by hand or
+ * filled by the CV extraction), best effort -- an unparseable string just
+ * starts the picker blank rather than blocking on it.
+ */
+function parseEducationDate(value) {
+  const text = value || ''
+  const status = /expected/i.test(text) ? 'Expected' : 'Graduated'
+  const month = MONTHS.find((m) => text.includes(m)) || ''
+  const yearMatch = text.match(/\b(19|20)\d{2}\b/)
+  return { status, month, year: yearMatch ? yearMatch[0] : '' }
+}
+
+function EducationDateField({ value, onChange }) {
+  const { status, month, year } = parseEducationDate(value)
+
+  function commit(nextStatus, nextMonth, nextYear) {
+    const datePart = [nextMonth, nextYear].filter(Boolean).join(' ')
+    onChange(datePart ? `${nextStatus}: ${datePart}` : nextStatus)
+  }
+
+  return (
+    <div>
+      <label className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-stone-400">Dates</label>
+      <div className="flex flex-wrap gap-1.5">
+        <div className="flex overflow-hidden rounded-lg border border-stone-200/70">
+          {['Graduated', 'Expected'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => commit(s, month, year)}
+              className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                status === s ? 'bg-stone-800 text-white' : 'bg-white text-stone-500 hover:bg-stone-50'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <select
+          value={month}
+          onChange={(e) => commit(status, e.target.value, year)}
+          className="rounded-lg border border-stone-200/70 bg-white px-1.5 py-1 text-[13px] text-stone-600"
+        >
+          <option value="">Month</option>
+          {MONTHS.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={(e) => commit(status, month, e.target.value)}
+          className="rounded-lg border border-stone-200/70 bg-white px-1.5 py-1 text-[13px] text-stone-600"
+        >
+          <option value="">Year</option>
+          {YEARS.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
+function EntryList({ entries, mode, dateField, onChange }) {
   function update(i, patch) {
     onChange(entries.map((e, idx) => (idx === i ? { ...e, ...patch } : e)))
   }
@@ -374,7 +550,11 @@ function EntryList({ entries, mode, onChange }) {
             {mode === 'bullets' && (
               <>
                 <MiniField label="Subheading" value={entry.subheading} onChange={(v) => update(i, { subheading: v })} />
-                <MiniField label="Dates" value={entry.dates} onChange={(v) => update(i, { dates: v })} />
+                {dateField === 'education' ? (
+                  <EducationDateField value={entry.dates} onChange={(v) => update(i, { dates: v })} />
+                ) : (
+                  <MiniField label="Dates" value={entry.dates} onChange={(v) => update(i, { dates: v })} />
+                )}
               </>
             )}
           </div>

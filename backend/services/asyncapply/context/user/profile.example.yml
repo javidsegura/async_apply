@@ -20,7 +20,6 @@ custom_house_rules: |
 
 location:
   authorized_in: [ES, EU]
-  needs_sponsorship: false
 
 target_roles:
   - Backend Engineer

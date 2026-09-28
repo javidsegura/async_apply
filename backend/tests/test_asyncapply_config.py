@@ -18,7 +18,7 @@ def _write_temp_modes(tmp_path, monkeypatch):
 
 _PROFILE_PAYLOAD = {
     "candidate": {"full_name": "Ada Lovelace"},
-    "location": {"authorized_in": ["GB"], "needs_sponsorship": False},
+    "location": {"authorized_in": ["GB"]},
     "target_roles": ["Backend Engineer"],
     "cv": {"technologies": ["Python"]},
 }

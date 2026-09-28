@@ -16,10 +16,10 @@ import ProfileForm from './ProfileForm.jsx'
 import AgentDnaForm from './AgentDnaForm.jsx'
 
 const SECTIONS = [
-  { key: 'profile', label: 'Profile', icon: FileText, adminOnly: false },
-  { key: 'agent_dna', label: 'Agent DNA', icon: Mic, adminOnly: false },
-  { key: 'modes', label: 'Modes', icon: MessageSquare, adminOnly: true },
-  { key: 'settings', label: 'Settings', icon: SlidersHorizontal, adminOnly: true },
+  { key: 'profile', label: '🪪 Profile', icon: FileText, adminOnly: false },
+  { key: 'agent_dna', label: '🎭 Agent DNA', icon: Mic, adminOnly: false },
+  { key: 'modes', label: '🧩 Modes', icon: MessageSquare, adminOnly: true },
+  { key: 'settings', label: '⚙️ Settings', icon: SlidersHorizontal, adminOnly: true },
 ]
 
 /**

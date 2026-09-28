@@ -55,9 +55,6 @@ class ProfileTargeting(BaseModel):
         default_factory=list,
         description="Country codes the candidate can legally work in without sponsorship, e.g. ['ES', 'EU'].",
     )
-    needs_sponsorship: bool = Field(
-        default=False, description="Whether roles outside authorized_in would need visa sponsorship."
-    )
     work_auth_note: str | None = Field(
         default=None,
         description="Anything else worth stating on the CV, e.g. 'Eligible to sign an internship "
@@ -100,7 +97,7 @@ class ExtractedProfile(BaseModel):
     Everything here is either literally printed on a CV (identity, education,
     experience, projects, awards, activities, technologies) or a light,
     low-risk inference from it (a one-line summary). Job-search targeting
-    (authorized_in, needs_sponsorship, target_roles, house rules) is not on a
+    (authorized_in, target_roles, house rules) is not on a
     CV and stays out of this model entirely, so there is no field here the
     model could be tempted to guess at from thin air.
     """
@@ -141,19 +138,22 @@ def _entry_dict(entry: CvEntry) -> dict:
 def _work_permits_line(targeting: ProfileTargeting) -> str:
     """Build the CV's one-line work-authorization statement from the targeting answers.
 
-    Asked once, as a job-search question, and reused here rather than asked a
-    second time as CV copy -- the two are the same fact.
+    Whether sponsorship is needed outside authorized_in isn't a separate
+    question worth asking -- authorized_in already means "no sponsorship
+    needed here," so anywhere else needing it is implied, not a fact the
+    candidate has to state twice.
 
     Args:
         targeting: The candidate's authorization answers.
 
     Returns:
-        A line like "Work authorization: ES, EU | No sponsorship required",
-        with work_auth_note appended if given.
+        A line like "Work authorization: ES, EU (sponsorship needed
+        elsewhere)", with work_auth_note appended if given.
     """
     countries = ", ".join(targeting.authorized_in) or "not specified"
-    sponsorship = "Sponsorship may be required" if targeting.needs_sponsorship else "No sponsorship required"
-    line = f"Work authorization: {countries} | {sponsorship}"
+    line = f"Work authorization: {countries}"
+    if targeting.authorized_in:
+        line += " (sponsorship needed elsewhere)"
     if targeting.work_auth_note:
         line += f" | {targeting.work_auth_note}"
     return line
@@ -175,7 +175,7 @@ def profile_to_dict(profile: Profile) -> dict:
         "candidate": {k: v for k, v in profile.candidate.model_dump().items() if v not in (None, "")},
         "location": {
             "authorized_in": profile.location.authorized_in,
-            "needs_sponsorship": profile.location.needs_sponsorship,
+            "work_auth_note": profile.location.work_auth_note,
         },
         "target_roles": profile.target_roles,
         "cv": {
@@ -217,7 +217,7 @@ def profile_from_dict(data: dict) -> Profile:
         custom_house_rules=data.get("custom_house_rules"),
         location=ProfileTargeting(
             authorized_in=location.get("authorized_in") or [],
-            needs_sponsorship=bool(location.get("needs_sponsorship", False)),
+            work_auth_note=location.get("work_auth_note"),
         ),
         target_roles=data.get("target_roles") or [],
         cv=ProfileCv(

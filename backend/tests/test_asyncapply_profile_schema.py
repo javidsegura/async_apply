@@ -17,7 +17,7 @@ def test_a_full_profile_round_trips_through_dict_and_back():
     original = Profile(
         candidate=ProfileCandidate(full_name="Ada Lovelace", location="London, UK", email="ada@example.com"),
         custom_house_rules="No crypto companies.",
-        location=ProfileTargeting(authorized_in=["GB", "EU"], needs_sponsorship=True, work_auth_note="Visa ready"),
+        location=ProfileTargeting(authorized_in=["GB", "EU"], work_auth_note="Visa ready"),
         target_roles=["Backend Engineer"],
         cv=ProfileCv(
             summary="A pioneer.",
@@ -33,18 +33,20 @@ def test_a_full_profile_round_trips_through_dict_and_back():
 
     assert restored.candidate.full_name == "Ada Lovelace"
     assert restored.location.authorized_in == ["GB", "EU"]
-    assert restored.location.needs_sponsorship is True
+    assert restored.location.work_auth_note == "Visa ready"
     assert restored.cv.education[0].subheading == "Mathematics"
     assert restored.cv.awards[0].text == "Honorary title."
 
 
 def test_work_permits_line_is_derived_not_asked():
+    """No sponsorship checkbox: outside authorized_in, sponsorship is
+    definitionally needed, so the line states it without asking twice."""
     profile = Profile(
         candidate=ProfileCandidate(full_name="Ada"),
-        location=ProfileTargeting(authorized_in=["ES", "EU"], needs_sponsorship=False, work_auth_note="Via IE University"),
+        location=ProfileTargeting(authorized_in=["ES", "EU"], work_auth_note="Via IE University"),
     )
     data = profile_to_dict(profile)
-    assert data["cv"]["work_permits"] == "Work authorization: ES, EU | No sponsorship required | Via IE University"
+    assert data["cv"]["work_permits"] == "Work authorization: ES, EU (sponsorship needed elsewhere) | Via IE University"
 
 
 def test_an_empty_profile_still_produces_the_keys_downstream_code_reads():
