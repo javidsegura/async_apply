@@ -153,16 +153,35 @@ export function getAsyncApplyProfile() {
   return request('/asyncapply/config/profile')
 }
 
-export function updateAsyncApplyProfile(content) {
-  return request('/asyncapply/config/profile', { method: 'PUT', body: JSON.stringify({ content }) })
+export function updateAsyncApplyProfile(profile) {
+  return request('/asyncapply/config/profile', { method: 'PUT', body: JSON.stringify(profile) })
 }
 
-export function getAsyncApplyVoiceDna() {
-  return request('/asyncapply/config/voice-dna')
+export async function fillAsyncApplyProfileFromCv(file) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE_URL}/asyncapply/config/profile/from-cv`, {
+    method: 'POST',
+    headers: await authHeader(),
+    body: form,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`API error ${res.status} filling profile from CV: ${text}`)
+  }
+  return res.json()
 }
 
-export function updateAsyncApplyVoiceDna(content) {
-  return request('/asyncapply/config/voice-dna', { method: 'PUT', body: JSON.stringify({ content }) })
+export function getAsyncApplyAgentDna() {
+  return request('/asyncapply/config/agent-dna')
+}
+
+export function updateAsyncApplyAgentDna(content) {
+  return request('/asyncapply/config/agent-dna', { method: 'PUT', body: JSON.stringify({ content }) })
+}
+
+export function getAsyncApplyMe() {
+  return request('/asyncapply/me')
 }
 
 export function getAsyncApplyModes() {

@@ -9,7 +9,7 @@ from database import Base, models
 from services.asyncapply import worker
 from services.asyncapply.stages.utils import Evaluation, Extraction, Shortlist
 
-_MINIMAL_PROFILE = "candidate: {}\n"
+_MINIMAL_PROFILE = {"candidate": {}}
 
 
 @pytest.fixture
@@ -26,12 +26,12 @@ def db_session_factory(monkeypatch: pytest.MonkeyPatch):
     return TestingSessionLocal
 
 
-def _make_batch(session_factory, raw_inputs: list[str], profile_yaml: str | None = _MINIMAL_PROFILE) -> int:
+def _make_batch(session_factory, raw_inputs: list[str], profile: dict | None = _MINIMAL_PROFILE) -> int:
     """Create a user (with a minimal valid profile, unless told otherwise) and
     a batch owned by them -- real load_context() then runs unmocked, so a
     test only needs to give it an empty-but-valid profile to work with."""
     db = session_factory()
-    user = models.User(firebase_uid="test-uid", email="test@example.com", profile_yaml=profile_yaml)
+    user = models.User(firebase_uid="test-uid", email="test@example.com", profile=profile)
     db.add(user)
     db.flush()
     batch = models.AsyncApplyBatch(state="queued", user_id=user.id)
@@ -183,7 +183,7 @@ async def test_one_failing_item_does_not_stop_the_rest_of_the_batch(
 async def test_missing_context_fails_items_without_wedging_the_batch(
     db_session_factory,
 ) -> None:
-    batch_id = _make_batch(db_session_factory, ["https://example.com/job"], profile_yaml=None)
+    batch_id = _make_batch(db_session_factory, ["https://example.com/job"], profile=None)
 
     await worker.process_batch(batch_id)
 

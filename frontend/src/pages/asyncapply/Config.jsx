@@ -2,37 +2,45 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, Mic, MessageSquare, SlidersHorizontal, Check } from 'lucide-react'
 import {
-  getAsyncApplyProfile,
-  updateAsyncApplyProfile,
-  getAsyncApplyVoiceDna,
-  updateAsyncApplyVoiceDna,
+  getAsyncApplyAgentDna,
+  updateAsyncApplyAgentDna,
   getAsyncApplyModes,
   getAsyncApplyMode,
   updateAsyncApplyMode,
   getAsyncApplySettings,
   updateAsyncApplySettings,
   getAsyncApplyAvailableModels,
+  getAsyncApplyMe,
 } from '../../api.js'
+import ProfileForm from './ProfileForm.jsx'
+import AgentDnaForm from './AgentDnaForm.jsx'
 
 const SECTIONS = [
-  { key: 'profile', label: 'Profile', icon: FileText },
-  { key: 'voice_dna', label: 'Voice DNA', icon: Mic },
-  { key: 'modes', label: 'Modes', icon: MessageSquare },
-  { key: 'settings', label: 'Settings', icon: SlidersHorizontal },
+  { key: 'profile', label: 'Profile', icon: FileText, adminOnly: false },
+  { key: 'agent_dna', label: 'Agent DNA', icon: Mic, adminOnly: false },
+  { key: 'modes', label: 'Modes', icon: MessageSquare, adminOnly: true },
+  { key: 'settings', label: 'Settings', icon: SlidersHorizontal, adminOnly: true },
 ]
 
 /**
  * Editors for everything that shapes the pipeline's behaviour: identity and
- * CV (profile.yml), writing voice, the per-stage prompts, and the models and
- * tuning knobs the pipeline actually runs with.
+ * CV (the profile form), agent voice, and -- admin only -- the per-stage
+ * prompts and the models/tuning knobs the pipeline runs with.
  */
 export default function Config() {
   const [section, setSection] = useState('profile')
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    getAsyncApplyMe().then((me) => setIsAdmin(me.role === 'admin'))
+  }, [])
+
+  const visibleSections = SECTIONS.filter((s) => !s.adminOnly || isAdmin)
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 rounded-xl bg-stone-100/70 p-1">
-        {SECTIONS.map(({ key, label, icon: Icon }) => (
+        {visibleSections.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setSection(key)}
@@ -46,24 +54,10 @@ export default function Config() {
         ))}
       </div>
 
-      {section === 'profile' && (
-        <TextFileEditor
-          title="profile.yml"
-          hint="Identity, CV, and targeting rules. Must stay valid YAML or the save is rejected before it reaches disk."
-          load={() => getAsyncApplyProfile().then((r) => r.content)}
-          save={updateAsyncApplyProfile}
-        />
-      )}
-      {section === 'voice_dna' && (
-        <TextFileEditor
-          title="voice_dna.md"
-          hint="Writing style rules applied to every generated cover letter and message."
-          load={() => getAsyncApplyVoiceDna().then((r) => r.content)}
-          save={updateAsyncApplyVoiceDna}
-        />
-      )}
-      {section === 'modes' && <ModesEditor />}
-      {section === 'settings' && <PipelineSettings />}
+      {section === 'profile' && <ProfileForm />}
+      {section === 'agent_dna' && <AgentDnaForm />}
+      {section === 'modes' && isAdmin && <ModesEditor />}
+      {section === 'settings' && isAdmin && <PipelineSettings />}
     </div>
   )
 }

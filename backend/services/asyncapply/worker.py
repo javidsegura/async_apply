@@ -77,7 +77,7 @@ async def process_batch(batch_id: int) -> None:
         user = batch.user
 
         try:
-            context = load_context(user.profile_yaml, user.agent_dna_md)
+            context = load_context(user.profile, user.agent_dna_md)
         except ValueError as exc:
             # Nothing can be evaluated without the candidate's context, so fail
             # every item with the same reason instead of rediscovering it N times.

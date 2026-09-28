@@ -11,9 +11,9 @@ the caller wants.
 import re
 from pathlib import Path
 
-import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 import schemas
@@ -23,6 +23,24 @@ from services.asyncapply.settings import get_settings
 from services.asyncapply.worker import process_batch
 
 router = APIRouter(prefix="/asyncapply", tags=["asyncapply"])
+
+
+class MeRead(BaseModel):
+    """What the frontend needs to know about who's signed in: role (to show
+    or hide admin-only UI) and budget (to show remaining debug/usage room)."""
+
+    email: str
+    role: str
+    token_budget_usd: float
+    spent_usd: float
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/me", response_model=MeRead)
+def get_me(user: models.User = Depends(get_current_user)) -> models.User:
+    """Return the signed-in user's own role and budget."""
+    return user
 
 _ASSETS = {"cv": "cv_pdf_path", "cover-letter": "cover_letter_pdf_path"}
 _ASSET_LABEL = {"cv": "CV", "cover-letter": "CoverLetter"}
@@ -47,8 +65,8 @@ def _download_filename(item: models.AsyncApplyItem, asset: str, owner: models.Us
     Returns:
         A filename like "Javier_D_SoftwareEngineer_CV.pdf".
     """
-    profile = yaml.safe_load(owner.profile_yaml) if owner.profile_yaml else {}
-    full_name = (profile or {}).get("candidate", {}).get("full_name", "")
+    profile = owner.profile if isinstance(owner.profile, dict) else {}
+    full_name = profile.get("candidate", {}).get("full_name", "")
     parts = full_name.split()
     first = _NAME_PART_RE.sub("", parts[0]) if parts else "Candidate"
     # parts[1], not parts[-1]: a Spanish two-surname name ("Javier Dominguez

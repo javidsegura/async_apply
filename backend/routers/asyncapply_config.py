@@ -8,14 +8,15 @@ deployment, so only the admin can change them.
 
 import re
 
-import yaml
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db, models
 from services.asyncapply.auth import get_current_user, require_admin
 from services.asyncapply.context.loader import MODES_DIR
+from services.asyncapply.profile_extraction import extract_profile_from_cv
+from services.asyncapply.profile_schema import ExtractedProfile, Profile, profile_from_dict, profile_to_dict
 from services.asyncapply.settings import AVAILABLE_MODELS, get_or_create_row
 
 router = APIRouter(prefix="/asyncapply/config", tags=["asyncapply-config"])
@@ -47,38 +48,52 @@ class SettingsPayload(BaseModel):
 _MODE_NAME_RE = re.compile(r"^[a-z_]+$")
 
 
-@router.get("/profile")
-def get_profile(user: models.User = Depends(get_current_user)) -> dict:
-    """Read the current user's profile.yml, for the editor to load."""
-    return {"content": user.profile_yaml or ""}
+@router.get("/profile", response_model=Profile)
+def get_profile(user: models.User = Depends(get_current_user)) -> Profile:
+    """Read the current user's profile as structured form data.
+
+    Returns:
+        The profile, defaulted to an empty shell if nothing was saved yet --
+        so a brand-new user's form has every section ready to fill in
+        rather than erroring on a missing profile.
+    """
+    return profile_from_dict(user.profile if isinstance(user.profile, dict) else {})
 
 
-@router.put("/profile")
+@router.put("/profile", response_model=Profile)
 def update_profile(
-    payload: ContentPayload,
+    payload: Profile,
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
-) -> dict:
-    """Overwrite the current user's profile.yml after validating it parses.
+) -> Profile:
+    """Save the current user's profile from the form.
 
-    A bad edit here is not cosmetic -- the worker reads this before every
-    batch, so a syntax error or a non-mapping document would take the whole
-    pipeline down on the next submission. Validating before writing means
-    the stored profile is never worse than what was already there.
+    Pydantic has already validated the shape by the time this runs, so
+    there is no invalid-YAML failure mode left the way the old raw-text
+    editor had -- the form can't produce a document the worker can't read.
+    """
+    user.profile = profile_to_dict(payload)
+    db.commit()
+    return payload
+
+
+@router.post("/profile/from-cv", response_model=ExtractedProfile)
+async def fill_profile_from_cv(
+    file: UploadFile, _user: models.User = Depends(get_current_user)
+) -> ExtractedProfile:
+    """Best-effort fill of the profile form from an uploaded CV.
+
+    Returns the extraction only -- it is not saved. The form merges these
+    values into whatever the user has already typed and lets them review
+    and correct everything before saving for real.
 
     Raises:
-        HTTPException: 422 if the YAML does not parse to a mapping.
+        HTTPException: 422 if the file isn't readable as a PDF.
     """
     try:
-        parsed = yaml.safe_load(payload.content)
-    except yaml.YAMLError as exc:
-        raise HTTPException(status_code=422, detail=f"invalid YAML: {exc}") from exc
-    if not isinstance(parsed, dict):
-        raise HTTPException(status_code=422, detail="profile.yml must be a YAML mapping")
-
-    user.profile_yaml = payload.content
-    db.commit()
-    return {"content": payload.content}
+        return await extract_profile_from_cv(await file.read())
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"could not read this CV: {exc}") from exc
 
 
 @router.get("/agent-dna")

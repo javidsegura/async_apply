@@ -21,8 +21,12 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 # back to if the DB row is somehow missing. Cheap-and-capable was chosen for
 # extraction, the stronger option for the stage that judges and writes prose.
 SEED_DEFAULTS = {
-    "model_extract_jd": "deepseek/deepseek-v4-flash",
-    "model_evaluate_job": "deepseek/deepseek-v3.2",
+    # From the earlier live bake-off against evaluate_job specifically: these
+    # two Gemini models cut per-item processing from ~5min to ~30-40s versus
+    # deepseek-v3.2, at comparable quality. find_contact stays on deepseek
+    # since that comparison never favored switching it.
+    "model_extract_jd": "google/gemini-2.5-flash-lite",
+    "model_evaluate_job": "google/gemini-2.5-flash",
     "model_find_contact": "deepseek/deepseek-v3.2",
     "parallelism": 2,
     "max_attempts": 3,

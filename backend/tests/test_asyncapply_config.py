@@ -16,41 +16,84 @@ def _write_temp_modes(tmp_path, monkeypatch):
     return modes_dir
 
 
+_PROFILE_PAYLOAD = {
+    "candidate": {"full_name": "Ada Lovelace"},
+    "location": {"authorized_in": ["GB"], "needs_sponsorship": False},
+    "target_roles": ["Backend Engineer"],
+    "cv": {"technologies": ["Python"]},
+}
+
+
 def test_profile_round_trips(client: TestClient, make_user):
     make_user()
 
-    put = client.put("/api/v1/asyncapply/config/profile", json={"content": "candidate:\n  name: Ada\n"})
+    put = client.put("/api/v1/asyncapply/config/profile", json=_PROFILE_PAYLOAD)
     assert put.status_code == 200
 
+    got = client.get("/api/v1/asyncapply/config/profile").json()
+    assert got["candidate"]["full_name"] == "Ada Lovelace"
+
+
+def test_a_new_user_gets_an_empty_but_valid_profile_shell(client: TestClient, make_user):
+    make_user()
     got = client.get("/api/v1/asyncapply/config/profile")
-    assert "Ada" in got.json()["content"]
+    assert got.status_code == 200
+    assert got.json()["candidate"]["full_name"] == ""
 
 
 def test_a_profile_is_private_to_its_own_user(client: TestClient, make_user):
     make_user()
-    client.put("/api/v1/asyncapply/config/profile", json={"content": "candidate:\n  name: Ada\n"})
+    client.put("/api/v1/asyncapply/config/profile", json=_PROFILE_PAYLOAD)
 
     make_user()  # switch identity
-    got = client.get("/api/v1/asyncapply/config/profile")
-    assert got.json()["content"] == ""
+    got = client.get("/api/v1/asyncapply/config/profile").json()
+    assert got["candidate"]["full_name"] == ""
 
 
-def test_invalid_yaml_is_rejected(client: TestClient, make_user):
+def test_a_malformed_profile_is_rejected(client: TestClient, make_user):
     make_user()
-    client.put("/api/v1/asyncapply/config/profile", json={"content": "candidate:\n  name: Ada\n"})
-
-    bad = client.put("/api/v1/asyncapply/config/profile", json={"content": "candidate: [unterminated"})
+    bad = client.put("/api/v1/asyncapply/config/profile", json={"candidate": "not a mapping"})
     assert bad.status_code == 422
 
-    # The bad write must not have touched what was already stored.
-    got = client.get("/api/v1/asyncapply/config/profile")
-    assert "Ada" in got.json()["content"]
 
+def test_filling_profile_from_a_cv_returns_the_extraction_without_saving(
+    client: TestClient, make_user, monkeypatch
+):
+    import routers.asyncapply_config as cfg
+    from services.asyncapply.profile_schema import ExtractedProfile
 
-def test_a_non_mapping_profile_is_rejected(client: TestClient, make_user):
+    async def fake_extract(pdf_bytes: bytes) -> ExtractedProfile:
+        return ExtractedProfile(full_name="Ada Lovelace", technologies=["Python"])
+
+    monkeypatch.setattr(cfg, "extract_profile_from_cv", fake_extract)
     make_user()
-    bad = client.put("/api/v1/asyncapply/config/profile", json={"content": "- just\n- a\n- list\n"})
-    assert bad.status_code == 422
+
+    res = client.post(
+        "/api/v1/asyncapply/config/profile/from-cv",
+        files={"file": ("cv.pdf", b"%PDF-1.4 fake", "application/pdf")},
+    )
+    assert res.status_code == 200
+    assert res.json()["full_name"] == "Ada Lovelace"
+
+    # Nothing was saved -- the extraction is only ever returned for the
+    # frontend to merge into the form and let the user review it.
+    assert client.get("/api/v1/asyncapply/config/profile").json()["candidate"]["full_name"] == ""
+
+
+def test_a_bad_cv_upload_is_a_422_not_a_500(client: TestClient, make_user, monkeypatch):
+    import routers.asyncapply_config as cfg
+
+    async def boom(pdf_bytes: bytes):
+        raise ValueError("not a real PDF")
+
+    monkeypatch.setattr(cfg, "extract_profile_from_cv", boom)
+    make_user()
+
+    res = client.post(
+        "/api/v1/asyncapply/config/profile/from-cv",
+        files={"file": ("cv.pdf", b"garbage", "application/pdf")},
+    )
+    assert res.status_code == 422
 
 
 def test_agent_dna_round_trips(client: TestClient, make_user):

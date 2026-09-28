@@ -11,7 +11,7 @@ from database.database import Base
 class User(Base):
     """One person using AsyncApply, provisioned on first Firebase login.
 
-    profile_yaml and agent_dna_md are this user's context -- the same shape
+    profile and agent_dna_md are this user's context -- the same shape
     the old single-tenant app read from context/user/*.yml on disk, now
     per-row so many users share one deployment. token_budget_usd and
     spent_usd gate batch submission: an admin sets the budget by hand
@@ -26,7 +26,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False, default="user")
 
-    profile_yaml: Mapped[str | None] = mapped_column(String, nullable=True)
+    profile: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     agent_dna_md: Mapped[str | None] = mapped_column(String, nullable=True)
 
     token_budget_usd: Mapped[float] = mapped_column(Float, nullable=False, default=2.0)

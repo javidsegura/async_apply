@@ -227,8 +227,7 @@ def test_download_filename_is_hr_facing_not_the_storage_path(
     from database import get_db, models
     from main import app
 
-    profile_yaml = "candidate:\n  full_name: Javier Dominguez Segura\n"
-    make_user(profile_yaml=profile_yaml)
+    make_user(profile={"candidate": {"full_name": "Javier Dominguez Segura"}})
 
     pdf = tmp_path / "internal-storage-name.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake")
@@ -285,3 +284,12 @@ def test_deleting_an_item_with_no_pdfs_still_works(client: TestClient, make_user
 def test_deleting_a_missing_item_is_404(client: TestClient, make_user) -> None:
     make_user()
     assert client.delete("/api/v1/asyncapply/items/99999").status_code == 404
+
+
+def test_me_returns_role_and_budget(client: TestClient, make_user) -> None:
+    make_user(role="admin", token_budget_usd=50.0)
+    res = client.get("/api/v1/asyncapply/me")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["role"] == "admin"
+    assert body["token_budget_usd"] == 50.0

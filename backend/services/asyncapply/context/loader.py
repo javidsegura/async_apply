@@ -3,8 +3,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
-
 CONTEXT_DIR = Path(__file__).parent
 MODES_DIR = CONTEXT_DIR / "modes"
 TEMPLATES_DIR = CONTEXT_DIR / "templates"
@@ -17,7 +15,7 @@ class AsyncApplyContext:
 
     profile is the single source of truth: identity, targeting rules and the
     whole CV (the fixed sections plus the roles and projects the model
-    tailors). It comes from users.profile_yaml -- per-user, in the DB -- not
+    tailors). It comes from users.profile -- per-user, in the DB -- not
     a shared file on disk, since a single deployment now serves many people.
     """
 
@@ -25,28 +23,24 @@ class AsyncApplyContext:
     agent_dna: str
 
 
-def load_context(profile_yaml: str | None, agent_dna_md: str | None = "") -> AsyncApplyContext:
+def load_context(profile: dict | None, agent_dna_md: str | None = "") -> AsyncApplyContext:
     """Build a user's context from their stored profile and agent DNA.
 
     Args:
-        profile_yaml: The user's profile.yml content, as stored on their row.
+        profile: The user's profile, as stored on their row (users.profile).
         agent_dna_md: The user's agent DNA (writing-voice preferences), or "".
 
     Returns:
         The parsed personal context.
 
     Raises:
-        ValueError: if profile_yaml is empty or does not parse to a mapping --
-            nothing can be evaluated without it.
+        ValueError: if profile is empty or not a mapping -- nothing can be
+            evaluated without it.
     """
-    if not profile_yaml or not profile_yaml.strip():
+    if not profile or not isinstance(profile, dict):
         raise ValueError("profile is empty -- complete your profile before submitting a batch")
 
-    parsed = yaml.safe_load(profile_yaml)
-    if not isinstance(parsed, dict):
-        raise ValueError("profile does not parse to a YAML mapping")
-
-    return AsyncApplyContext(profile=parsed, agent_dna=agent_dna_md or "")
+    return AsyncApplyContext(profile=profile, agent_dna=agent_dna_md or "")
 
 
 def load_mode(name: str) -> str:
