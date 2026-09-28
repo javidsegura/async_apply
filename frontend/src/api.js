@@ -192,6 +192,10 @@ export function getAsyncApplyMe() {
   return request('/asyncapply/me')
 }
 
+export function completeAsyncApplyOnboarding(fields) {
+  return request('/asyncapply/me/onboarding', { method: 'PATCH', body: JSON.stringify(fields) })
+}
+
 export function getAsyncApplyModes() {
   return request('/asyncapply/config/modes')
 }

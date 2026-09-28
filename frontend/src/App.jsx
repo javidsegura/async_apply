@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Login from './pages/Login.jsx'
+import Onboarding from './pages/Onboarding.jsx'
 import AsyncApplyLayout from './pages/asyncapply/AsyncApplyLayout.jsx'
 import Hub from './pages/asyncapply/Hub.jsx'
 import Pipeline from './pages/asyncapply/Pipeline.jsx'
@@ -14,6 +15,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/" element={<AsyncApplyLayout />}>
           <Route index element={<Hub />} />
           <Route path="apply" element={<Pipeline />} />
