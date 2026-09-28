@@ -11,12 +11,12 @@ import { duration, countryFlag } from './lib/format.js'
 export { duration }
 
 const FACTS = [
-  { key: 'work_auth_tier', icon: ShieldCheck, label: 'Work auth', tint: 'bg-indigo-50/70 text-indigo-600' },
-  { key: 'min_years_required', icon: GraduationCap, label: 'Min years', tint: 'bg-stone-50 text-stone-500' },
-  { key: 'company_type', icon: Building2, label: 'Type', tint: 'bg-stone-50 text-stone-500' },
-  { key: 'legitimacy', icon: Gauge, label: 'Signal', tint: 'bg-stone-50 text-stone-500' },
-  { key: 'cost_usd', icon: Coins, label: 'Cost', tint: 'bg-emerald-50/70 text-emerald-600', fmt: (v) => `$${v.toFixed(4)}` },
-  { key: 'total_tokens', icon: Coins, label: 'Tokens', tint: 'bg-stone-50 text-stone-500', fmt: (v) => v.toLocaleString() },
+  { key: 'work_auth_tier', icon: ShieldCheck, label: 'Work auth', iconColor: 'text-indigo-500' },
+  { key: 'min_years_required', icon: GraduationCap, label: 'Min years', iconColor: 'text-stone-400' },
+  { key: 'company_type', icon: Building2, label: 'Type', iconColor: 'text-stone-400' },
+  { key: 'legitimacy', icon: Gauge, label: 'Signal', iconColor: 'text-stone-400' },
+  { key: 'cost_usd', icon: Coins, label: 'Cost', iconColor: 'text-emerald-500', fmt: (v) => `$${v.toFixed(4)}` },
+  { key: 'total_tokens', icon: Coins, label: 'Tokens', iconColor: 'text-stone-400', fmt: (v) => v.toLocaleString() },
 ]
 
 /**
@@ -45,19 +45,7 @@ export default function ItemDetail({ item, onLogoUploaded }) {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
-        {item.location && (
-          <Chip icon={MapPin} label="Location" tint="bg-sky-50/70 text-sky-600">
-            {countryFlag(item.location)} {item.location}
-          </Chip>
-        )}
-        {FACTS.filter((f) => item[f.key] != null).map((f) => (
-          <Chip key={f.key} icon={f.icon} label={f.label} tint={f.tint}>
-            {f.fmt ? f.fmt(item[f.key]) : item[f.key]}
-          </Chip>
-        ))}
-        {took && <Chip icon={Timer} label="Took" tint="bg-violet-50/70 text-violet-600">{took}</Chip>}
-      </div>
+      <FactGrid item={item} took={took} />
 
       {item.hard_stop_reason && (
         <p className="rounded-xl bg-amber-50/70 px-4 py-2.5 text-xs text-amber-800">
@@ -149,13 +137,45 @@ export default function ItemDetail({ item, onLogoUploaded }) {
   )
 }
 
-function Chip({ icon: Icon, label, tint, children }) {
+/**
+ * The item's key facts as a clean grid of cells -- label above, value
+ * below, one icon per cell -- instead of a wrapping row of small pills
+ * that crammed an icon, a label word and a value into one badge each.
+ */
+function FactGrid({ item, took }) {
+  const cells = []
+  if (item.location) {
+    cells.push({
+      key: 'location', icon: MapPin, label: 'Location', iconColor: 'text-sky-500',
+      value: `${countryFlag(item.location)} ${item.location}`,
+    })
+  }
+  for (const f of FACTS) {
+    if (item[f.key] == null) continue
+    cells.push({ ...f, value: f.fmt ? f.fmt(item[f.key]) : item[f.key] })
+  }
+  if (took) cells.push({ key: 'took', icon: Timer, label: 'Took', iconColor: 'text-violet-500', value: took })
+
+  if (!cells.length) return null
+
   return (
-    <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${tint}`}>
-      <Icon size={11} />
-      <span className="opacity-50">{label}</span>
-      {children}
-    </span>
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+      {cells.map((c) => (
+        <FactCell key={c.key} {...c} />
+      ))}
+    </div>
+  )
+}
+
+function FactCell({ icon: Icon, label, iconColor, value }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-stone-50/70 px-2.5 py-2">
+      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-stone-400">
+        <Icon size={11} className={iconColor} />
+        {label}
+      </div>
+      <div className="mt-0.5 truncate text-[13px] font-medium text-stone-700">{value}</div>
+    </div>
   )
 }
 
