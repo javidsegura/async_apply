@@ -1,22 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Download, FileText, ExternalLink, ImagePlus, Timer, MapPin, ShieldCheck,
   GraduationCap, Building2, Gauge, Coins, ThumbsUp, ThumbsDown, Users,
   ChevronRight, ChevronDown,
 } from 'lucide-react'
-import { openAsyncApplyAsset, uploadAsyncApplyLogo } from '../../api.js'
+import { openAsyncApplyAsset, uploadAsyncApplyLogo, getAsyncApplyMe } from '../../api.js'
 import { duration, countryFlag } from './lib/format.js'
 
 export { duration }
 
+// cost_usd/total_tokens are filtered out for non-admins in FactGrid below --
+// "tokens spend should be admin only," regular users can't act on this
+// figure anyway since only the admin sets budgets.
 const FACTS = [
   { key: 'work_auth_tier', icon: ShieldCheck, label: 'Work auth', iconColor: 'text-indigo-500' },
   { key: 'min_years_required', icon: GraduationCap, label: 'Min years', iconColor: 'text-stone-400' },
   { key: 'company_type', icon: Building2, label: 'Type', iconColor: 'text-stone-400' },
   { key: 'legitimacy', icon: Gauge, label: 'Signal', iconColor: 'text-stone-400' },
-  { key: 'cost_usd', icon: Coins, label: 'Cost', iconColor: 'text-emerald-500', fmt: (v) => `$${v.toFixed(4)}` },
-  { key: 'total_tokens', icon: Coins, label: 'Tokens', iconColor: 'text-stone-400', fmt: (v) => v.toLocaleString() },
+  { key: 'cost_usd', icon: Coins, label: 'Cost', iconColor: 'text-emerald-500', fmt: (v) => `$${v.toFixed(4)}`, adminOnly: true },
+  { key: 'total_tokens', icon: Coins, label: 'Tokens', iconColor: 'text-stone-400', fmt: (v) => v.toLocaleString(), adminOnly: true },
 ]
 
 /**
@@ -28,6 +31,12 @@ const FACTS = [
  * @param {{item: object, onLogoUploaded?: () => void}} props
  */
 export default function ItemDetail({ item, onLogoUploaded }) {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    getAsyncApplyMe().then((me) => setIsAdmin(me.role === 'admin'))
+  }, [])
+
   async function uploadLogo(e) {
     const file = e.target.files?.[0]
     if (!file || !item.company) return
@@ -36,6 +45,7 @@ export default function ItemDetail({ item, onLogoUploaded }) {
   }
 
   const took = duration(item.started_at, item.ended_at)
+  const canApply = item.url && !item.hard_stop_reason
 
   return (
     <div className="space-y-3.5">
@@ -45,7 +55,7 @@ export default function ItemDetail({ item, onLogoUploaded }) {
         </p>
       )}
 
-      <FactGrid item={item} took={took} />
+      <FactGrid item={item} took={took} isAdmin={isAdmin} />
 
       {item.hard_stop_reason && (
         <p className="rounded-xl bg-amber-50/70 px-4 py-2.5 text-xs text-amber-800">
@@ -125,7 +135,6 @@ export default function ItemDetail({ item, onLogoUploaded }) {
             Cover letter
           </Pill>
         )}
-        {item.url && <Pill href={item.url} icon={ExternalLink} muted>Posting</Pill>}
         {item.company && (
           <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-200/80 px-3 py-1.5 text-[11px] font-medium text-stone-500 transition-colors hover:bg-stone-50">
             <ImagePlus size={12} /> Logo
@@ -133,6 +142,18 @@ export default function ItemDetail({ item, onLogoUploaded }) {
           </label>
         )}
       </div>
+
+      {canApply && (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        >
+          Apply on {item.company ? `${item.company}'s` : "the company's"} site
+          <ExternalLink size={15} />
+        </a>
+      )}
     </div>
   )
 }
@@ -142,7 +163,7 @@ export default function ItemDetail({ item, onLogoUploaded }) {
  * below, one icon per cell -- instead of a wrapping row of small pills
  * that crammed an icon, a label word and a value into one badge each.
  */
-function FactGrid({ item, took }) {
+function FactGrid({ item, took, isAdmin }) {
   const cells = []
   if (item.location) {
     cells.push({
@@ -152,6 +173,7 @@ function FactGrid({ item, took }) {
   }
   for (const f of FACTS) {
     if (item[f.key] == null) continue
+    if (f.adminOnly && !isAdmin) continue
     cells.push({ ...f, value: f.fmt ? f.fmt(item[f.key]) : item[f.key] })
   }
   if (took) cells.push({ key: 'took', icon: Timer, label: 'Took', iconColor: 'text-violet-500', value: took })
