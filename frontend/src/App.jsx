@@ -9,10 +9,18 @@ import History from './pages/asyncapply/History.jsx'
 import Metrics from './pages/asyncapply/Metrics.jsx'
 import Config from './pages/asyncapply/Config.jsx'
 import Admin from './pages/asyncapply/Admin.jsx'
+import Welcome from './pages/marketing/Welcome.jsx'
+import Pricing from './pages/marketing/Pricing.jsx'
+import Privacy from './pages/marketing/Privacy.jsx'
+import Terms from './pages/marketing/Terms.jsx'
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/welcome" element={<Welcome />} />
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route path="/onboarding" element={<Onboarding />} />

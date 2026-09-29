@@ -240,3 +240,16 @@ export function updateAsyncApplyAdminBudget(id, tokenBudgetUsd) {
 export function getAsyncApplyAdminStats(window) {
   return request(`/asyncapply/admin/stats${toQueryString({ window })}`)
 }
+
+// --- Public marketing site ---
+
+/**
+ * Submit a pricing-page lead. Public, no auth -- request()'s authHeader()
+ * check returns {} for a signed-out visitor, so this is safe to route
+ * through the normal wrapper.
+ *
+ * @param {{name: string, email: string, plan: string}} lead
+ */
+export function submitPricingLead(lead) {
+  return request('/leads', { method: 'POST', body: JSON.stringify(lead) })
+}

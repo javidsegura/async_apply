@@ -142,3 +142,20 @@ class AsyncApplyItem(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     batch: Mapped["AsyncApplyBatch"] = relationship(back_populates="items")
+
+
+class PricingLead(Base):
+    """A visitor's pricing-plan pick from the public marketing site.
+
+    Submitted with no auth from /pricing -- there is no real checkout yet, so
+    this is just a record for the founder to follow up on by hand (Zelle/
+    PayPal). Not tied to a User row since the visitor hasn't signed in.
+    """
+
+    __tablename__ = "pricing_leads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    plan: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)

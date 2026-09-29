@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
+import Logo from '../components/Logo.jsx'
 
 /**
  * The only door in: Google sign-in via Firebase. Email/password can be
@@ -30,10 +30,9 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-6">
       <div className="w-full max-w-sm rounded-2xl border border-stone-200/70 bg-white/80 p-8 text-center shadow-sm backdrop-blur-sm">
-        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-sky-50">
-          <Sparkles size={18} className="text-stone-600" strokeWidth={2} />
+        <div className="mx-auto mb-4 flex justify-center">
+          <Logo textClassName="text-lg text-stone-800" />
         </div>
-        <h1 className="text-lg font-semibold tracking-tight text-stone-800">AsyncApply</h1>
         <p className="mt-1 text-sm text-stone-400">
           An agent that reads the job before it writes the letter.
         </p>

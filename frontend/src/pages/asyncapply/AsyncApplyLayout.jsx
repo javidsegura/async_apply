@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { LayoutGrid, Send, Database, BarChart3, SlidersHorizontal, LogOut, Crown } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider.jsx'
 import { getAsyncApplyMe } from '../../api.js'
+import Logo from '../../components/Logo.jsx'
 
 const TABS = [
   { to: '/', label: 'Hub', icon: LayoutGrid, end: true, adminOnly: false },
@@ -30,6 +31,7 @@ export default function AsyncApplyLayout() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50/50 px-3 py-5 sm:px-4">
       <nav className="mb-5 flex flex-wrap items-center gap-1 rounded-2xl border border-stone-200/60 bg-white/70 p-1 backdrop-blur-sm">
+        <Logo className="mx-2 hidden sm:inline-flex" textClassName="text-xs text-stone-500" />
         {visibleTabs.map((tab) => (
           <NavLink
             key={tab.to}
