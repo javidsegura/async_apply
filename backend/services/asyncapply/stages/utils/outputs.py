@@ -73,9 +73,9 @@ class CvTailoring(StageOutput):
         ),
     )
 
-# Well under the 280-340 target: only a genuinely stunted letter should
+# Well under the 350-450 target: only a genuinely stunted letter should
 # cost a retry, not ordinary variance around the asked-for length.
-MIN_BODY_WORDS = 210
+MIN_BODY_WORDS = 280
 
 
 class CoverLetter(StageOutput):
@@ -90,8 +90,8 @@ class CoverLetter(StageOutput):
     paragraphs: list[str] = Field(
         default_factory=list,
         description=(
-            "The letter body: exactly four paragraphs of 70-90 words each, "
-            "280-340 words in total. Write full paragraphs -- anything under 60 "
+            "The letter body: exactly five paragraphs of 70-90 words each, "
+            "350-450 words in total. Write full paragraphs -- anything under 60 "
             "words is a stub and reads as an afterthought, and the total is "
             "checked, so count as you go. No greeting and no sign-off. "
             "(1) The role and why this company specifically. "
@@ -99,7 +99,10 @@ class CoverLetter(StageOutput):
             "posting, with its metrics exactly as written. "
             "(3) A second, different angle -- another project or responsibility "
             "that covers a requirement the first paragraph did not. "
-            "(4) How the candidate's trajectory fits what this role needs, then "
+            "(4) A third angle -- a skill, a piece of domain knowledge, or a "
+            "collaboration/leadership moment the first two paragraphs did not "
+            "already cover. "
+            "(5) How the candidate's trajectory fits what this role needs, then "
             "logistics (availability, work authorization, relocation if "
             "relevant) and a clear ask. "
             "No markdown, no bullet lists, no headings."
@@ -127,7 +130,7 @@ class CoverLetter(StageOutput):
         if words < MIN_BODY_WORDS:
             raise ValueError(
                 f"the cover letter body is {words} words; it must be at least "
-                f"{MIN_BODY_WORDS} (target 280-340). Expand each paragraph with "
+                f"{MIN_BODY_WORDS} (target 350-450). Expand each paragraph with "
                 "specifics from the CV rather than adding new paragraphs."
             )
         return self

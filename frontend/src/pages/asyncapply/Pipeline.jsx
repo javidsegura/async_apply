@@ -301,6 +301,37 @@ function BatchPanel({ batch, onRetry, onStatusChange }) {
   )
 }
 
+const ITEM_STATUS = {
+  filtered: { label: 'Filtered', tint: 'bg-amber-50 text-amber-700', pulse: false },
+  failed: { label: 'Failed', tint: 'bg-rose-50 text-rose-600', pulse: false },
+  processing: { label: 'Processing', tint: 'bg-sky-50 text-sky-700', pulse: true },
+  completed: { label: 'Completed', tint: 'bg-emerald-50 text-emerald-700', pulse: false },
+  queued: { label: 'Queued', tint: 'bg-stone-100 text-stone-500', pulse: true },
+}
+
+function ItemStatusBadge({ item }) {
+  const key = item.hard_stop_reason
+    ? 'filtered'
+    : item.error || item.state === 'failed'
+      ? 'failed'
+      : item.state === 'running'
+        ? 'processing'
+        : item.state === 'done'
+          ? 'completed'
+          : 'queued'
+  const { label, tint, pulse } = ITEM_STATUS[key]
+
+  return (
+    <motion.span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${tint}`}
+      animate={pulse ? { opacity: [1, 0.55, 1] } : { opacity: 1 }}
+      transition={pulse ? { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } : undefined}
+    >
+      {label}
+    </motion.span>
+  )
+}
+
 function ItemCard({ item, onStatusChange }) {
   const [open, setOpen] = useState(false)
   const settled = item.state === 'done' || item.state === 'failed'
@@ -325,11 +356,7 @@ function ItemCard({ item, onStatusChange }) {
 
         <div className="mt-3 flex items-center justify-between gap-3">
           <PipelineDag item={item} />
-          {item.hard_stop_reason ? (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">filtered</span>
-          ) : item.error ? (
-            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-600">error</span>
-          ) : null}
+          <ItemStatusBadge item={item} />
         </div>
 
         {item.state === 'running' && (

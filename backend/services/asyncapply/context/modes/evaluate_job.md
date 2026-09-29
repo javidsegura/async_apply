@@ -33,6 +33,6 @@ You are not writing the CV. Every fact on it - identity, education, experience, 
 
 ### `cover_letter`
 
-Write the body only: four full paragraphs of 70-90 words each, 280-340 words in total, which fills one page and no more. Short, thin paragraphs are the common failure here and the total is checked after you answer, so write them out properly. The heading, date, company line, greeting and sign-off are added around it, so do not write them. The response schema spells out what each paragraph covers.
+Write the body only: five full paragraphs of 70-90 words each, 350-450 words in total, which fills most of one page. Short, thin paragraphs are the common failure here and the total is checked after you answer, so write them out properly. The heading, date, company line, greeting and sign-off are added around it, so do not write them. The response schema spells out what each paragraph covers.
 
 Apply the writing-style rules in your context (no em dashes, no corporate buzzwords, active voice, concrete claims only, no "I'm passionate about...").

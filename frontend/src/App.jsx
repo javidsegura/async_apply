@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Login from './pages/Login.jsx'
 import Onboarding from './pages/Onboarding.jsx'
@@ -17,14 +17,15 @@ import Terms from './pages/marketing/Terms.jsx'
 export default function App() {
   return (
     <Routes>
-      <Route path="/welcome" element={<Welcome />} />
+      <Route path="/" element={<Welcome />} />
+      <Route path="/welcome" element={<Navigate to="/" replace />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/" element={<AsyncApplyLayout />}>
+        <Route path="/app" element={<AsyncApplyLayout />}>
           <Route index element={<Hub />} />
           <Route path="apply" element={<Pipeline />} />
           <Route path="history" element={<History />} />

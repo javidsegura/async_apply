@@ -59,7 +59,16 @@ async function request(path, options = {}) {
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`API error ${res.status} on ${path}: ${text}`)
+    // FastAPI error bodies are {"detail": "..."} -- surface that message
+    // directly rather than the raw JSON, since callers show err.message as-is.
+    const detail = (() => {
+      try {
+        return JSON.parse(text).detail
+      } catch {
+        return null
+      }
+    })()
+    throw new Error(detail || text || `API error ${res.status} on ${path}`)
   }
   if (res.status === 204) return null
   return res.json()

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Send, Inbox, DollarSign, TrendingUp, ChevronDown, ChevronRight,
-  FileText, Sparkles, Check, Trash2,
+  Check, Trash2,
 } from 'lucide-react'
 import {
   getAsyncApplyAdminUsers, getAsyncApplyAdminUserDetail, updateAsyncApplyAdminBudget,
@@ -67,8 +67,6 @@ export default function Admin() {
         </div>
       )}
 
-      {stats && <ReportCard stats={stats} windowLabel={WINDOWS.find((w) => w.key === window_)?.label} />}
-
       <div>
         <SectionHead title="Users" hint={`${users.length} total`} />
         <Panel className="divide-y divide-stone-100">
@@ -79,39 +77,6 @@ export default function Admin() {
         </Panel>
       </div>
     </div>
-  )
-}
-
-function ReportCard({ stats, windowLabel }) {
-  const period = windowLabel === 'All' ? 'Across all time' : `Over the last ${windowLabel}`
-  const outcomeLine = stats.total_items
-    ? `${stats.items_done} completed, ${stats.items_failed} failed, ${stats.items_hard_stopped} filtered out by a hard-stop rule.`
-    : 'No items processed in this window.'
-
-  return (
-    <Panel className="overflow-hidden">
-      <div className="h-[3px] bg-gradient-to-r from-violet-200 via-sky-200 to-emerald-200" />
-      <div className="flex items-start gap-3 p-5">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-100 to-sky-50">
-          <FileText size={15} className="text-stone-600" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="mb-1 flex items-center gap-1.5 text-sm font-medium text-stone-800">
-            Report <Sparkles size={12} className="text-stone-300" />
-          </h3>
-          <p className="text-[13px] leading-relaxed text-stone-600">
-            {period}, <b className="font-semibold text-stone-800">{stats.active_users}</b>{' '}
-            active user{stats.active_users === 1 ? '' : 's'} ran{' '}
-            <b className="font-semibold text-stone-800">{stats.total_batches}</b>{' '}
-            batch{stats.total_batches === 1 ? '' : 'es'} covering{' '}
-            <b className="font-semibold text-stone-800">{stats.total_items}</b>{' '}
-            job posting{stats.total_items === 1 ? '' : 's'}, spending a total of{' '}
-            <b className="font-semibold text-stone-800">${stats.total_spend_usd.toFixed(3)}</b>
-            {stats.total_items > 0 && ` (avg $${stats.avg_cost_per_item_usd.toFixed(4)}/item)`}. {outcomeLine}
-          </p>
-        </div>
-      </div>
-    </Panel>
   )
 }
 

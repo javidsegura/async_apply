@@ -22,10 +22,6 @@ export default function MarketingFooter() {
           </a>
         </div>
       </div>
-      <p className="mt-6 text-center text-xs text-white/30 sm:text-left">
-        AsyncApply is a solo, nights-and-weekends project. Not a company, just one person building
-        something useful.
-      </p>
     </footer>
   )
 }

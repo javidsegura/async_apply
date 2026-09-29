@@ -30,7 +30,7 @@ export default function Onboarding() {
     setBusy(true)
     try {
       await completeAsyncApplyOnboarding(fields)
-      navigate('/', { replace: true })
+      navigate('/app', { replace: true })
     } finally {
       setBusy(false)
     }

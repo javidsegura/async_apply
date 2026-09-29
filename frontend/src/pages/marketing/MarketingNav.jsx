@@ -9,7 +9,7 @@ import Logo from '../../components/Logo.jsx'
 export default function MarketingNav() {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-      <Link to="/welcome">
+      <Link to="/">
         <Logo textClassName="text-lg text-white" />
       </Link>
       <Link

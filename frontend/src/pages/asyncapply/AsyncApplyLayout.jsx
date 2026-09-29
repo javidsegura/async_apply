@@ -6,12 +6,12 @@ import { getAsyncApplyMe } from '../../api.js'
 import Logo from '../../components/Logo.jsx'
 
 const TABS = [
-  { to: '/', label: 'Hub', icon: LayoutGrid, end: true, adminOnly: false },
-  { to: '/apply', label: 'Apply', icon: Send, adminOnly: false },
-  { to: '/history', label: 'Applications', icon: Database, adminOnly: false },
-  { to: '/metrics', label: 'Metrics', icon: BarChart3, adminOnly: false },
-  { to: '/config', label: 'Config', icon: SlidersHorizontal, adminOnly: false },
-  { to: '/admin', label: 'Admin', icon: Crown, adminOnly: true },
+  { to: '/app', label: 'Hub', icon: LayoutGrid, end: true, adminOnly: false },
+  { to: '/app/apply', label: 'Apply', icon: Send, adminOnly: false },
+  { to: '/app/history', label: 'Applications', icon: Database, adminOnly: false },
+  { to: '/app/metrics', label: 'Metrics', icon: BarChart3, adminOnly: false },
+  { to: '/app/config', label: 'Config', icon: SlidersHorizontal, adminOnly: false },
+  { to: '/app/admin', label: 'Admin', icon: Crown, adminOnly: true },
 ]
 
 /**

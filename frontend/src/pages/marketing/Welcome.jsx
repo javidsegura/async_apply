@@ -1,7 +1,31 @@
 import { Link } from 'react-router-dom'
-import { FileSearch, Target, UserSearch, ShieldCheck, Lock, ArrowRight } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { FileSearch, Target, UserSearch, ArrowRight, Layers, Gauge, MousePointerClick } from 'lucide-react'
 import MarketingNav from './MarketingNav.jsx'
 import MarketingFooter from './MarketingFooter.jsx'
+
+const VALUE_PROPS = [
+  {
+    icon: Layers,
+    title: '10x the volume',
+    body: 'Run dozens of postings through the pipeline at once instead of writing one application at a time.',
+  },
+  {
+    icon: Target,
+    title: 'Better ATS matching',
+    body: "Technologies and project picks are reordered per posting, so the keywords an ATS actually scans for come first -- not a static CV pasted everywhere.",
+  },
+  {
+    icon: Gauge,
+    title: 'Parallel and fast',
+    body: 'Postings are evaluated concurrently, not one after another -- a whole batch finishes in the time one used to take by hand.',
+  },
+  {
+    icon: MousePointerClick,
+    title: 'Minimal input',
+    body: 'Drop in a link. The agent reads it, scores it, and writes the documents -- you review, you don\'t draft.',
+  },
+]
 
 const STEPS = [
   {
@@ -42,34 +66,58 @@ export default function Welcome() {
         <MarketingNav />
 
         {/* Hero */}
-        <section className="mx-auto max-w-4xl px-6 pb-24 pt-16 text-center sm:pt-24">
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/60">
-            Built for the AI-agent era of job hunting
+        <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-24 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
+          <div className="text-center lg:text-left">
+            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/60 lg:mx-0">
+              Built for the AI-agent era of job hunting
+            </div>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
+              The AI agent that actually{' '}
+              <span className="bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
+                applies for you
+              </span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-white/60 lg:mx-0">
+              Not another cover-letter generator that free-associates off a job title. AsyncApply reads
+              the actual posting, scores your real fit against it, and drafts a tailored CV, cover
+              letter, and recruiter outreach -- grounded in your profile, not fabricated.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+              <Link
+                to="/login"
+                className="flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.02]"
+              >
+                Start applying <ArrowRight size={18} />
+              </Link>
+              <Link
+                to="/pricing"
+                className="rounded-full border border-white/15 px-7 py-3.5 text-base font-medium text-white/80 transition-colors hover:bg-white/5"
+              >
+                See pricing
+              </Link>
+            </div>
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-            The AI agent that actually{' '}
-            <span className="bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
-              applies for you
-            </span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-white/60">
-            Not another cover-letter generator that free-associates off a job title. AsyncApply reads
-            the actual posting, scores your real fit against it, and drafts a tailored CV, cover
-            letter, and recruiter outreach -- grounded in your profile, not fabricated.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              to="/login"
-              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.02]"
-            >
-              Start applying <ArrowRight size={18} />
-            </Link>
-            <Link
-              to="/pricing"
-              className="rounded-full border border-white/15 px-7 py-3.5 text-base font-medium text-white/80 transition-colors hover:bg-white/5"
-            >
-              See pricing
-            </Link>
+          <HeroObject />
+        </section>
+
+        {/* Value */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
+          <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-white/40">
+            What you actually get
+          </h2>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {VALUE_PROPS.map((v) => (
+              <div
+                key={v.title}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-sky-500/20">
+                  <v.icon size={18} className="text-emerald-300" />
+                </div>
+                <h3 className="mb-2 text-base font-semibold text-white">{v.title}</h3>
+                <p className="text-sm leading-relaxed text-white/55">{v.body}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -139,29 +187,6 @@ export default function Welcome() {
           </p>
         </section>
 
-        {/* Security/privacy */}
-        <section className="mx-auto max-w-4xl px-6 py-16">
-          <div className="flex flex-col items-start gap-6 rounded-2xl border border-white/10 bg-white/[0.03] p-8 sm:flex-row sm:items-center">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10">
-              <ShieldCheck size={22} className="text-emerald-300" />
-            </div>
-            <div>
-              <h3 className="flex items-center gap-2 font-semibold text-white">
-                Your CV isn't the product <Lock size={14} className="text-white/40" />
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">
-                Your CV and profile are used only to run your own pipeline. Nothing is sold, shared,
-                or used to train anything, beyond what's sent to the LLM providers needed to actually
-                do the work. This is a solo project, not a data company -- see the{' '}
-                <Link to="/privacy" className="underline underline-offset-2 hover:text-white">
-                  privacy policy
-                </Link>{' '}
-                for the specifics.
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* Final CTA */}
         <section className="mx-auto max-w-4xl px-6 py-24 text-center">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -181,6 +206,46 @@ export default function Welcome() {
 
         <MarketingFooter />
       </div>
+    </div>
+  )
+}
+
+/**
+ * Abstract floating geometric mark: three offset, gradient-filled planes in
+ * a perspective container, each rotating on its own axis and orbit -- pure
+ * CSS 3D transforms via framer-motion, no rendering library. Purely
+ * decorative, so it's hidden on small screens rather than fighting the
+ * hero text for space.
+ */
+function HeroObject() {
+  return (
+    <div
+      className="relative hidden h-80 w-full items-center justify-center lg:flex"
+      style={{ perspective: '1200px' }}
+    >
+      <motion.div
+        className="absolute h-56 w-56 rounded-[2rem]"
+        style={{
+          background: 'linear-gradient(135deg, rgba(56,189,248,0.55), rgba(99,102,241,0.35))',
+          boxShadow: '0 30px 80px -20px rgba(56,189,248,0.35)',
+        }}
+        animate={{ rotateX: [15, 45, 15], rotateY: [0, 360], y: [0, -14, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute h-40 w-40 rounded-[1.75rem] border border-white/20"
+        style={{
+          background: 'linear-gradient(135deg, rgba(129,140,248,0.5), rgba(56,189,248,0.15))',
+        }}
+        animate={{ rotateX: [-20, 20, -20], rotateY: [360, 0], x: [0, 18, 0] }}
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute h-24 w-24 rounded-2xl bg-white/10 backdrop-blur-sm"
+        style={{ border: '1px solid rgba(255,255,255,0.25)' }}
+        animate={{ rotateZ: [0, 360], rotateX: [10, -10, 10] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
+      />
     </div>
   )
 }
