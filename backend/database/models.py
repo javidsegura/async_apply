@@ -52,7 +52,9 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
-    batches: Mapped[list["AsyncApplyBatch"]] = relationship(back_populates="user")
+    batches: Mapped[list["AsyncApplyBatch"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class AsyncApplySettings(Base):

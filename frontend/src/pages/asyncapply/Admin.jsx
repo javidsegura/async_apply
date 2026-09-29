@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Send, Inbox, DollarSign, TrendingUp, ChevronDown, ChevronRight,
-  FileText, Sparkles, Check,
+  FileText, Sparkles, Check, Trash2,
 } from 'lucide-react'
 import {
   getAsyncApplyAdminUsers, getAsyncApplyAdminUserDetail, updateAsyncApplyAdminBudget,
-  getAsyncApplyAdminStats,
+  getAsyncApplyAdminStats, deleteAsyncApplyAdminUser,
 } from '../../api.js'
 import { Panel, Stat, SectionHead } from './lib/ui.jsx'
 import { formatRelative, formatDateTime } from './lib/format.js'
@@ -73,7 +73,7 @@ export default function Admin() {
         <SectionHead title="Users" hint={`${users.length} total`} />
         <Panel className="divide-y divide-stone-100">
           {users.map((u) => (
-            <UserRow key={u.id} user={u} onBudgetSaved={refreshUsers} />
+            <UserRow key={u.id} user={u} onBudgetSaved={refreshUsers} onUserDeleted={refreshUsers} />
           ))}
           {!users.length && <p className="px-4 py-8 text-center text-xs text-stone-300">No users yet.</p>}
         </Panel>
@@ -115,12 +115,15 @@ function ReportCard({ stats, windowLabel }) {
   )
 }
 
-function UserRow({ user, onBudgetSaved }) {
+function UserRow({ user, onBudgetSaved, onUserDeleted }) {
   const [open, setOpen] = useState(false)
   const [detail, setDetail] = useState(null)
   const [budget, setBudget] = useState(user.token_budget_usd)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   function toggle() {
     setOpen((v) => !v)
@@ -137,6 +140,25 @@ function UserRow({ user, onBudgetSaved }) {
       setTimeout(() => setSaved(false), 1500)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete(e) {
+    e.stopPropagation()
+    if (!confirmingDelete) {
+      setConfirmingDelete(true)
+      return
+    }
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteAsyncApplyAdminUser(user.id)
+      onUserDeleted()
+    } catch (err) {
+      setDeleteError(err.message)
+      setConfirmingDelete(false)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -177,8 +199,25 @@ function UserRow({ user, onBudgetSaved }) {
           >
             {saved ? <Check size={11} /> : 'Set'}
           </button>
+          <button
+            onClick={handleDelete}
+            onBlur={() => setConfirmingDelete(false)}
+            disabled={deleting}
+            title={confirmingDelete ? 'Click again to permanently delete' : 'Delete user'}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-40 ${
+              confirmingDelete
+                ? 'bg-rose-600 text-white'
+                : 'text-stone-300 hover:bg-rose-50 hover:text-rose-500'
+            }`}
+          >
+            <Trash2 size={12} />
+            {confirmingDelete && 'Confirm'}
+          </button>
         </div>
       </div>
+      {deleteError && (
+        <p className="px-4 pb-2 text-[11px] text-rose-500">{deleteError}</p>
+      )}
 
       <AnimatePresence initial={false}>
         {open && (

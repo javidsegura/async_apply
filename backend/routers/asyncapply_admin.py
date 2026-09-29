@@ -3,6 +3,7 @@ set their budget by hand, and workspace-wide time-window stats.
 """
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -205,6 +206,42 @@ def get_stats(
         "items_failed": sum(1 for i in items if i.state == "failed"),
         "items_hard_stopped": sum(1 for i in items if i.hard_stop_reason),
     }
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+) -> None:
+    """Permanently delete a user and everything they own.
+
+    Every batch and item scoped to this user is cascade-deleted at the ORM
+    level, and each item's generated CV/cover-letter PDFs are removed too --
+    those are named after the item's id, so leaving them would orphan files
+    nothing can ever reach again.
+
+    Raises:
+        HTTPException: 404 if no such user, 400 if the admin targets their
+            own account (self-deletion would lock the workspace with no
+            admin left to fix it).
+    """
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="cannot delete your own admin account")
+
+    user = db.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    for batch in user.batches:
+        for item in batch.items:
+            for attribute in ("cv_pdf_path", "cover_letter_pdf_path"):
+                stored = getattr(item, attribute)
+                if stored:
+                    Path(stored).unlink(missing_ok=True)
+
+    db.delete(user)
+    db.commit()
 
 
 @router.patch("/users/{user_id}/budget", response_model=UserRead)

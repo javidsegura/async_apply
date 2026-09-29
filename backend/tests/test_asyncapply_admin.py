@@ -116,3 +116,32 @@ def test_budget_response_still_carries_usage_fields(client: TestClient, make_use
     body = res.json()
     assert body["token_budget_usd"] == 10.0
     assert body["batch_count"] == 0
+
+
+def test_deleting_a_user_is_forbidden_to_a_regular_user(client: TestClient, make_user) -> None:
+    target = make_user()
+    make_user()
+    assert client.delete(f"/api/v1/asyncapply/admin/users/{target.id}").status_code == 403
+
+
+def test_admin_can_delete_a_user_and_their_batches(client: TestClient, make_user) -> None:
+    target = make_user()
+    _seed_batch(target.id, created_at=datetime.utcnow(), items=[("done", 0.02)])
+    make_user(role="admin")
+
+    res = client.delete(f"/api/v1/asyncapply/admin/users/{target.id}")
+    assert res.status_code == 204
+
+    rows = client.get("/api/v1/asyncapply/admin/users").json()
+    assert not any(r["id"] == target.id for r in rows)
+
+
+def test_deleting_a_nonexistent_user_is_404(client: TestClient, make_user) -> None:
+    make_user(role="admin")
+    assert client.delete("/api/v1/asyncapply/admin/users/999999").status_code == 404
+
+
+def test_admin_cannot_delete_their_own_account(client: TestClient, make_user) -> None:
+    admin = make_user(role="admin")
+    res = client.delete(f"/api/v1/asyncapply/admin/users/{admin.id}")
+    assert res.status_code == 400

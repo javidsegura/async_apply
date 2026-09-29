@@ -241,6 +241,10 @@ export function getAsyncApplyAdminStats(window) {
   return request(`/asyncapply/admin/stats${toQueryString({ window })}`)
 }
 
+export function deleteAsyncApplyAdminUser(id) {
+  return request(`/asyncapply/admin/users/${id}`, { method: 'DELETE' })
+}
+
 // --- Public marketing site ---
 
 /**
