@@ -1,5 +1,7 @@
 """FastAPI application entrypoint for AsyncApply: mounts routers."""
 
+import os
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +11,30 @@ from services.asyncapply.worker import recover_orphaned_work
 
 load_dotenv()
 
+DEV_ORIGINS = ["http://localhost:3000", "http://localhost:5173"]
+
+
+def _allowed_origins() -> list[str]:
+    """Resolve the CORS allowlist for this deployment.
+
+    Defaults to the local dev ports; set CORS_ORIGINS to a comma-separated
+    list of real origins in production. Deliberately never "*", since the
+    API is credentialed.
+
+    Returns:
+        The origins permitted to call this API from a browser.
+    """
+    configured = os.getenv("CORS_ORIGINS", "").strip()
+    if not configured:
+        return DEV_ORIGINS
+    return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+
 app = FastAPI(title="AsyncApply")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -7,7 +7,10 @@ cannot skip the lookup and invent the answer instead.
 
 import asyncio
 import contextlib
+import ipaddress
+import socket
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from ddgs import DDGS
 
@@ -72,6 +75,53 @@ async def search(query: str, limit: int = MAX_RESULTS) -> list[SearchResult]:
     ]
 
 
+class BlockedUrlError(ValueError):
+    """Raised for a URL that points somewhere the server must not fetch."""
+
+
+def assert_fetchable(url: str) -> None:
+    """Reject URLs that would make the server fetch its own infrastructure.
+
+    The posting URL comes straight from the user, and this process renders it
+    in a real browser, so without this an ordinary account could point the
+    pipeline at the cloud metadata endpoint (169.254.169.254) and read the
+    instance's IAM credentials out of the "job description," or sweep private
+    addresses to map the internal network. Every hostname is resolved and
+    every address it answers with must be publicly routable.
+
+    This closes the straightforward case, not a determined attacker: a host
+    that resolves differently between this check and the browser's own lookup
+    (DNS rebinding) would still get through. Blocking that properly needs the
+    fetch itself pinned to the checked address, which Chromium does not make
+    easy -- worth revisiting if this ever serves untrusted signups.
+
+    Args:
+        url: The URL about to be fetched.
+
+    Raises:
+        BlockedUrlError: If the scheme is not http(s), the host cannot be
+            resolved, or any resolved address is private, loopback,
+            link-local, reserved, or otherwise not publicly routable.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise BlockedUrlError(f"only http(s) URLs can be fetched, got {parsed.scheme!r}")
+    if not parsed.hostname:
+        raise BlockedUrlError("URL has no host")
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror as exc:
+        raise BlockedUrlError(f"could not resolve {parsed.hostname}") from exc
+
+    for info in resolved:
+        address = ipaddress.ip_address(info[4][0])
+        if not address.is_global or address.is_multicast:
+            raise BlockedUrlError(
+                f"{parsed.hostname} resolves to the non-public address {address}"
+            )
+
+
 async def fetch_page_text(url: str, timeout_seconds: int | None = None) -> str:
     """Load a page in headless Chromium and return its visible text.
 
@@ -86,7 +136,11 @@ async def fetch_page_text(url: str, timeout_seconds: int | None = None) -> str:
 
     Returns:
         The page's visible text, truncated to MAX_PAGE_CHARS.
+
+    Raises:
+        BlockedUrlError: If the URL points at non-public infrastructure.
     """
+    assert_fetchable(url)
     timeout_ms = (timeout_seconds or get_settings().fetch_timeout) * 1000
     async with open_page() as page:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)

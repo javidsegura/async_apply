@@ -9,7 +9,7 @@ admin-read side.
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db, models
@@ -19,11 +19,15 @@ router = APIRouter(tags=["leads"])
 
 
 class LeadCreate(BaseModel):
-    """A visitor's plan pick from the pricing page."""
+    """A visitor's plan pick from the pricing page.
 
-    name: str
-    email: str
-    plan: str
+    Lengths are capped because this endpoint is unauthenticated: without a
+    bound, a script could write arbitrarily large rows into the table.
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    plan: str = Field(min_length=1, max_length=60)
 
 
 class LeadRead(BaseModel):

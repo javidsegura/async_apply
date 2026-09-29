@@ -89,12 +89,12 @@ export default function Welcome() {
               >
                 Start applying <ArrowRight size={18} />
               </Link>
-              <Link
-                to="/pricing"
+              <a
+                href="#how-it-works"
                 className="rounded-full border border-white/15 px-7 py-3.5 text-base font-medium text-white/80 transition-colors hover:bg-white/5"
               >
-                See pricing
-              </Link>
+                See how it works
+              </a>
             </div>
           </div>
           <HeroObject />
@@ -122,7 +122,7 @@ export default function Welcome() {
         </section>
 
         {/* How it works */}
-        <section className="mx-auto max-w-6xl px-6 py-20">
+        <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-white/40">
             How it works
           </h2>
@@ -193,14 +193,13 @@ export default function Welcome() {
             Stop rewriting the same cover letter
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-white/55">
-            Free to try, simple pricing after that -- handled personally, not through a payment
-            processor you've never heard of.
+            Drop in a posting and see what the agent comes back with.
           </p>
           <Link
-            to="/pricing"
+            to="/login"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.02]"
           >
-            See pricing <ArrowRight size={18} />
+            Start applying <ArrowRight size={18} />
           </Link>
         </section>
 

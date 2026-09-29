@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, Check } from 'lucide-react'
 import { completeAsyncApplyOnboarding } from '../api.js'
@@ -19,6 +19,7 @@ const YEARS = Array.from({ length: 10 }, (_, i) => CURRENT_YEAR + 3 - i)
  */
 export default function Onboarding() {
   const navigate = useNavigate()
+  const { onOnboarded } = useOutletContext()
   const [school, setSchool] = useState('')
   const [fieldOfStudy, setFieldOfStudy] = useState('')
   const [gradYear, setGradYear] = useState('')
@@ -30,6 +31,9 @@ export default function Onboarding() {
     setBusy(true)
     try {
       await completeAsyncApplyOnboarding(fields)
+      // Tell the auth gate before navigating, so it doesn't bounce us back
+      // here on a stale flag.
+      onOnboarded()
       navigate('/app', { replace: true })
     } finally {
       setBusy(false)

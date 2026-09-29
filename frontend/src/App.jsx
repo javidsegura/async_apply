@@ -10,7 +10,6 @@ import Metrics from './pages/asyncapply/Metrics.jsx'
 import Config from './pages/asyncapply/Config.jsx'
 import Admin from './pages/asyncapply/Admin.jsx'
 import Welcome from './pages/marketing/Welcome.jsx'
-import Pricing from './pages/marketing/Pricing.jsx'
 import Privacy from './pages/marketing/Privacy.jsx'
 import Terms from './pages/marketing/Terms.jsx'
 
@@ -19,7 +18,6 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/welcome" element={<Navigate to="/" replace />} />
-      <Route path="/pricing" element={<Pricing />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/login" element={<Login />} />

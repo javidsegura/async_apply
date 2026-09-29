@@ -10,10 +10,10 @@ import { Panel, Stars, SectionHead } from './lib/ui.jsx'
 import { formatRelative, countryFlag, STATUS_META } from './lib/format.js'
 
 const CARDS = [
-  { to: '/apply', icon: Send, title: 'Apply', desc: 'Queue postings, watch them run.', tint: 'from-sky-100 to-sky-50' },
-  { to: '/history', icon: Database, title: 'Applications', desc: 'Track every application, board or table.', tint: 'from-violet-100 to-violet-50' },
-  { to: '/metrics', icon: BarChart3, title: 'Metrics', desc: 'Volume, outcomes, real spend.', tint: 'from-emerald-100 to-emerald-50' },
-  { to: '/config', icon: SlidersHorizontal, title: 'Config', desc: 'Profile, prompts, models.', tint: 'from-rose-100 to-rose-50' },
+  { to: '/app/apply', icon: Send, title: 'Apply', desc: 'Queue postings, watch them run.', tint: 'from-sky-100 to-sky-50' },
+  { to: '/app/history', icon: Database, title: 'Applications', desc: 'Track every application, board or table.', tint: 'from-violet-100 to-violet-50' },
+  { to: '/app/metrics', icon: BarChart3, title: 'Metrics', desc: 'Volume, outcomes, real spend.', tint: 'from-emerald-100 to-emerald-50' },
+  { to: '/app/config', icon: SlidersHorizontal, title: 'Config', desc: 'Profile, prompts, models.', tint: 'from-rose-100 to-rose-50' },
 ]
 
 /**
@@ -76,7 +76,7 @@ export default function Hub() {
               {worthApplying.map((item) => (
                 <Link
                   key={item.id}
-                  to="/history"
+                  to="/app/history"
                   className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-stone-50/60"
                 >
                   <div className="min-w-0 flex-1">
@@ -104,7 +104,7 @@ export default function Hub() {
                 {broken.map((item) => (
                   <Link
                     key={item.id}
-                    to="/apply"
+                    to="/app/apply"
                     className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-stone-50/60"
                   >
                     <AlertTriangle size={13} className="shrink-0 text-amber-400" />
