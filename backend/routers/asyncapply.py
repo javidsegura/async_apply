@@ -35,6 +35,11 @@ class MeRead(BaseModel):
     token_budget_usd: float
     spent_usd: float
     onboarding_completed: bool
+    school: str | None = None
+    grad_year: int | None = None
+    field_of_study: str | None = None
+    target_roles: str | None = None
+    referral_source: str | None = None
 
     model_config = {"from_attributes": True}
 

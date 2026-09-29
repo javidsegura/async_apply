@@ -25,6 +25,11 @@ is a plausible target, return an empty `contacts` and say why in `reason`.
 Copy each person's `contact_linkedin` exactly as the URL appears in their block.
 A URL that is not one of the ones given is discarded, so do not adjust them.
 
+Write `fit_reason` as one short, concrete sentence grounding the score in
+something specific from their profile -- their team, seniority or a project,
+not a restatement of the score itself (e.g. "Leads the backend platform team
+this role reports into" rather than "Strong fit for this role").
+
 ## Step 2 — Draft
 
 Classify each as `recruiter | hiring_manager | peer | interviewer` and write

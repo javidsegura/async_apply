@@ -18,6 +18,9 @@ export default function RequireAuth() {
 
   useEffect(() => {
     if (!user) return
+    // Re-checked on every path change (not just on sign-in) so that leaving
+    // /onboarding after a successful submit picks up the fresh
+    // onboarding_completed flag instead of bouncing back on stale state.
     let cancelled = false
     getAsyncApplyMe().then((me) => {
       if (!cancelled) setNeedsOnboarding(!me.onboarding_completed)
@@ -25,7 +28,7 @@ export default function RequireAuth() {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, location.pathname])
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />

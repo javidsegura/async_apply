@@ -19,7 +19,10 @@ def _hit(url: str) -> SearchResult:
 
 
 def _contact(url: str, name: str = "Ada", fit_score: float = 4.0) -> Contact:
-    return Contact(contact_name=name, contact_linkedin=url, message="hello", fit_score=fit_score)
+    return Contact(
+        contact_name=name, contact_linkedin=url, message="hello", fit_score=fit_score,
+        fit_reason="test fixture",
+    )
 
 
 REAL = "https://www.linkedin.com/in/real-person"

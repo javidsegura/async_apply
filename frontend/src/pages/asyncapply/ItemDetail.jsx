@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Download, FileText, ExternalLink, ImagePlus, Timer, MapPin, ShieldCheck,
   GraduationCap, Building2, Gauge, Coins, ThumbsUp, ThumbsDown, Users,
-  ChevronRight, ChevronDown,
+  ChevronRight, ChevronDown, Copy, Check,
 } from 'lucide-react'
 import { openAsyncApplyAsset, uploadAsyncApplyLogo, getAsyncApplyMe } from '../../api.js'
 import { duration, countryFlag } from './lib/format.js'
@@ -119,7 +119,13 @@ export default function ItemDetail({ item, onLogoUploaded }) {
                     <span className="ml-auto text-[10px] text-stone-400">fit {c.fit_score.toFixed(1)}</span>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-stone-500">{c.message}</p>
+                {c.fit_reason && (
+                  <p className="mt-1 text-[10px] italic leading-relaxed text-stone-400">{c.fit_reason}</p>
+                )}
+                <div className="mt-1.5 flex items-start justify-between gap-2">
+                  <p className="text-[11px] leading-relaxed text-stone-500">{c.message}</p>
+                  <CopyButton text={c.message} />
+                </div>
               </li>
             ))}
           </ul>
@@ -238,6 +244,26 @@ function Reveal({ label, icon: Icon, count, variant, children }) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copy message"
+      className="mt-0.5 shrink-0 rounded-full p-1 text-stone-300 transition-colors hover:bg-white hover:text-sky-600"
+    >
+      {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+    </button>
   )
 }
 

@@ -274,6 +274,9 @@ class Contact(StageOutput):
             "with what the posting actually asks for."
         )
     )
+    fit_reason: str = Field(
+        description="One short sentence grounding the fit_score in this person's actual profile."
+    )
     message: str = Field(description="Outreach draft, 300 characters or fewer.")
 
 

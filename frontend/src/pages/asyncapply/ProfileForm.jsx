@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Sparkles, Plus, X, Loader2, ChevronDown, Check } from 'lucide-react'
-import { getAsyncApplyProfile, updateAsyncApplyProfile, fillAsyncApplyProfileFromCv } from '../../api.js'
+import {
+  getAsyncApplyProfile,
+  updateAsyncApplyProfile,
+  fillAsyncApplyProfileFromCv,
+  getAsyncApplyMe,
+  completeAsyncApplyOnboarding,
+} from '../../api.js'
 import { COUNTRIES, COUNTRY_BY_CODE, DIAL_CODES } from './lib/countries.js'
 
 const EMPTY_ENTRY = { heading: '', location: '', subheading: '', dates: '', bullets: [], text: null }
@@ -120,6 +126,8 @@ export default function ProfileForm() {
       </div>
 
       <Milestones profile={profile} />
+
+      <AboutYou />
 
       <Section title="Identity" emoji="🪪">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -277,6 +285,140 @@ function Milestones({ profile }) {
             </span>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+const ABOUT_FIELDS_OF_STUDY = ['Computer Science', 'Data Science', 'Business', 'Engineering', 'Other']
+const ABOUT_TARGET_AREAS = ['Software Engineering', 'Data / ML', 'Product', 'Design', 'Other']
+const ABOUT_CURRENT_YEAR = new Date().getFullYear()
+const ABOUT_YEARS = Array.from({ length: 10 }, (_, i) => ABOUT_CURRENT_YEAR + 3 - i)
+
+/**
+ * The profiling questions asked once at onboarding, editable afterwards --
+ * these back the admin usage panel, not the pipeline, so they live in their
+ * own small card rather than among the CV/targeting fields above.
+ */
+function AboutYou() {
+  const [me, setMe] = useState(null)
+  const [school, setSchool] = useState('')
+  const [fieldOfStudy, setFieldOfStudy] = useState('')
+  const [gradYear, setGradYear] = useState('')
+  const [targetArea, setTargetArea] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState(null)
+
+  useEffect(() => {
+    getAsyncApplyMe().then((m) => {
+      setMe(m)
+      setSchool(m.school || '')
+      setFieldOfStudy(m.field_of_study || '')
+      setGradYear(m.grad_year ? String(m.grad_year) : '')
+      setTargetArea(m.target_roles || '')
+    })
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    setStatus(null)
+    try {
+      await completeAsyncApplyOnboarding({
+        school: school || undefined,
+        field_of_study: fieldOfStudy || undefined,
+        grad_year: gradYear ? Number(gradYear) : undefined,
+        target_roles: targetArea || undefined,
+      })
+      setStatus({ ok: true, message: 'Saved.' })
+    } catch (err) {
+      setStatus({ ok: false, message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!me) return null
+
+  return (
+    <div className="rounded-2xl border border-stone-200/70 bg-white/80 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <h3 className="mb-1 font-medium text-stone-800">🎓 About you</h3>
+      <p className="mb-4 text-xs text-stone-500">
+        Asked once when you first signed in -- edit it here any time.
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="School" value={school} onChange={setSchool} placeholder="IE University" />
+        <div>
+          <label className="mb-1 block text-xs font-medium text-stone-500">Graduation year</label>
+          <div className="flex flex-wrap gap-1.5">
+            {ABOUT_YEARS.map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setGradYear(String(y))}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  gradYear === String(y)
+                    ? 'border-sky-200 bg-sky-50 text-sky-700'
+                    : 'border-stone-200/70 text-stone-400 hover:border-stone-300 hover:text-stone-600'
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-stone-500">Field of study</label>
+          <div className="flex flex-wrap gap-1.5">
+            {ABOUT_FIELDS_OF_STUDY.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setFieldOfStudy(opt)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  fieldOfStudy === opt
+                    ? 'border-sky-200 bg-sky-50 text-sky-700'
+                    : 'border-stone-200/70 text-stone-400 hover:border-stone-300 hover:text-stone-600'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-stone-500">Job-hunting for</label>
+          <div className="flex flex-wrap gap-1.5">
+            {ABOUT_TARGET_AREAS.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setTargetArea(opt)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  targetArea === opt
+                    ? 'border-sky-200 bg-sky-50 text-sky-700'
+                    : 'border-stone-200/70 text-stone-400 hover:border-stone-300 hover:text-stone-600'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-xl bg-stone-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-opacity disabled:opacity-30"
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </motion.button>
+        {status && (
+          <span className={`text-xs ${status.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{status.message}</span>
+        )}
       </div>
     </div>
   )
